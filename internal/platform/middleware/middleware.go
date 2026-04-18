@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/crewdigital/hopper/internal/auth"
 	"github.com/crewdigital/hopper/internal/platform/logger"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -15,6 +16,11 @@ const (
 	UserIDKey    = "user_id"
 	UserRoleKey  = "user_role"
 )
+
+// AuthService defines the interface for authentication operations
+type AuthService interface {
+	ValidateAccessToken(token string) (*auth.Claims, error)
+}
 
 // RequestID adds a unique request ID to the context
 func RequestID(next http.Handler) http.Handler {
@@ -56,30 +62,37 @@ func CORS(allowedOrigins, allowedMethods, allowedHeaders []string, maxAge int) f
 }
 
 // Auth validates JWT tokens and adds user info to context
-func Auth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+// This is a middleware that requires the auth service to be injected
+func Auth(authService AuthService) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
 
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
-			return
-		}
+			if !strings.HasPrefix(authHeader, "Bearer ") {
+				http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+				return
+			}
 
-		token := strings.TrimPrefix(authHeader, "Bearer ")
-		// TODO: Validate JWT token and extract user info
-		// For now, this is a placeholder
-		_ = token
+			token := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Once validated, add user info to context
-		// ctx := context.WithValue(r.Context(), UserIDKey, userID)
-		// ctx = context.WithValue(ctx, UserRoleKey, role)
+			// Validate JWT token and extract user info
+			claims, err := authService.ValidateAccessToken(token)
+			if err != nil {
+				http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+				return
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			// Add user info to context
+			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+			ctx = context.WithValue(ctx, UserRoleKey, claims.Role)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 // RequireRole checks if the user has the required role

@@ -21,6 +21,19 @@ func NewHandler(deliveryService *Service) *Handler {
 }
 
 // GetDelivery handles getting a delivery
+// @Summary Get delivery by ID
+// @Description Retrieve a specific delivery by its ID
+// @Tags delivery
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Delivery ID"
+// @Success 200 {object} Delivery "Delivery retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid delivery ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Delivery not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /delivery/{id} [get]
 func (h *Handler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 	deliveryIDStr := middleware.URLParam(r, "id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)
@@ -39,6 +52,16 @@ func (h *Handler) GetDelivery(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListCourierDeliveries handles listing deliveries for the current courier
+// @Summary List courier deliveries
+// @Description Retrieve all deliveries for the authenticated courier
+// @Tags delivery
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Delivery "Deliveries retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /delivery/courier [get]
 func (h *Handler) ListCourierDeliveries(w http.ResponseWriter, r *http.Request) {
 	courierIDStr := middleware.GetUserID(r.Context())
 	courierID, err := uuid.Parse(courierIDStr)
@@ -57,6 +80,20 @@ func (h *Handler) ListCourierDeliveries(w http.ResponseWriter, r *http.Request) 
 }
 
 // UpdateDeliveryStatus handles updating a delivery's status
+// @Summary Update delivery status
+// @Description Update the status of a delivery
+// @Tags delivery
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Delivery ID"
+// @Param status query string true "New status"
+// @Success 200 {object} map[string]string "Delivery status updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Delivery not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /delivery/{id}/status [put]
 func (h *Handler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Request) {
 	deliveryIDStr := middleware.URLParam(r, "id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)
@@ -83,6 +120,19 @@ func (h *Handler) UpdateDeliveryStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // MarkPickedUp handles marking a delivery as picked up
+// @Summary Mark delivery as picked up
+// @Description Mark a delivery as picked up by the courier
+// @Tags delivery
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Delivery ID"
+// @Success 200 {object} map[string]string "Delivery marked as picked up successfully"
+// @Failure 400 {object} map[string]string "Invalid delivery ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Delivery not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /delivery/{id}/picked-up [put]
 func (h *Handler) MarkPickedUp(w http.ResponseWriter, r *http.Request) {
 	deliveryIDStr := middleware.URLParam(r, "id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)
@@ -103,6 +153,19 @@ func (h *Handler) MarkPickedUp(w http.ResponseWriter, r *http.Request) {
 }
 
 // MarkDelivered handles marking a delivery as delivered
+// @Summary Mark delivery as delivered
+// @Description Mark a delivery as delivered by the courier
+// @Tags delivery
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Delivery ID"
+// @Success 200 {object} map[string]string "Delivery marked as delivered successfully"
+// @Failure 400 {object} map[string]string "Invalid delivery ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Delivery not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /delivery/{id}/delivered [put]
 func (h *Handler) MarkDelivered(w http.ResponseWriter, r *http.Request) {
 	deliveryIDStr := middleware.URLParam(r, "id")
 	deliveryID, err := uuid.Parse(deliveryIDStr)

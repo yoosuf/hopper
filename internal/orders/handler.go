@@ -25,6 +25,18 @@ func NewHandler(orderService *Service, validator *validator.Validator) *Handler 
 }
 
 // CreateOrder handles creating a new order
+// @Summary Create a new order
+// @Description Create a new order with items, restaurant, and delivery address
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateOrderRequest true "Order details"
+// @Success 201 {object} Order "Order created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /orders [post]
 func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	customerIDStr := middleware.GetUserID(r.Context())
 	customerID, err := uuid.Parse(customerIDStr)
@@ -54,6 +66,19 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetOrder handles getting an order
+// @Summary Get order by ID
+// @Description Retrieve a specific order by its ID
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Order ID"
+// @Success 200 {object} Order "Order retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid order ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Order not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /orders/{id} [get]
 func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	orderIDStr := middleware.URLParam(r, "id")
 	orderID, err := uuid.Parse(orderIDStr)
@@ -72,6 +97,16 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListCustomerOrders handles listing orders for the current customer
+// @Summary List customer orders
+// @Description Retrieve all orders for the authenticated customer
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Order "Orders retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /orders/my [get]
 func (h *Handler) ListCustomerOrders(w http.ResponseWriter, r *http.Request) {
 	customerIDStr := middleware.GetUserID(r.Context())
 	customerID, err := uuid.Parse(customerIDStr)
@@ -90,6 +125,19 @@ func (h *Handler) ListCustomerOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListRestaurantOrders handles listing orders for a restaurant
+// @Summary List restaurant orders
+// @Description Retrieve all orders for a specific restaurant
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param restaurant_id path string true "Restaurant ID"
+// @Success 200 {array} Order "Orders retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid restaurant ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your restaurant"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /orders/restaurant/{restaurant_id} [get]
 func (h *Handler) ListRestaurantOrders(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "restaurant_id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -108,18 +156,32 @@ func (h *Handler) ListRestaurantOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 // CancelOrder handles cancelling an order
+// @Summary Cancel an order
+// @Description Cancel an order by ID (only allowed in certain workflow states)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Order ID"
+// @Success 204 "Order cancelled successfully"
+// @Failure 400 {object} map[string]string "Invalid order ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Order cannot be cancelled"
+// @Failure 404 {object} map[string]string "Order not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /orders/{id}/cancel [put]
 func (h *Handler) CancelOrder(w http.ResponseWriter, r *http.Request) {
-	customerIDStr := middleware.GetUserID(r.Context())
-	customerID, err := uuid.Parse(customerIDStr)
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer ID", nil)
-		return
-	}
-
 	orderIDStr := middleware.URLParam(r, "id")
 	orderID, err := uuid.Parse(orderIDStr)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "INVALID_ORDER_ID", "Invalid order ID", nil)
+		return
+	}
+
+	customerIDStr := middleware.GetUserID(r.Context())
+	customerID, err := uuid.Parse(customerIDStr)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer ID", nil)
 		return
 	}
 
@@ -133,6 +195,7 @@ func (h *Handler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusNoContent)
 	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
 		"message": "Order cancelled successfully",
 	})

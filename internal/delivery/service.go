@@ -19,12 +19,39 @@ func New(repo Repository) *Service {
 
 // Delivery represents a delivery assignment
 type Delivery struct {
-	ID         uuid.UUID
-	OrderID    uuid.UUID
-	CourierID *uuid.UUID
-	Status     string
-	PickedUpAt *string
+	ID          uuid.UUID
+	OrderID     uuid.UUID
+	CourierID   *uuid.UUID
+	Status      string
+	PickedUpAt  *string
 	DeliveredAt *string
+}
+
+// Location represents a geographic location
+type Location struct {
+	Latitude  float64
+	Longitude float64
+}
+
+// DeliveryFeeRequest represents a delivery fee calculation request
+type DeliveryFeeRequest struct {
+	PickupLocation   Location
+	DeliveryLocation Location
+	BaseFee          int
+	DistanceFeePerKm int
+	SurgeMultiplier  float64
+	IsSurgeActive    bool
+}
+
+// DeliveryFeeResponse represents a delivery fee calculation response
+type DeliveryFeeRequestResponse struct {
+	BaseFee         int
+	DistanceKm      float64
+	DistanceFee     int
+	Surcharge       int
+	TotalFee        int
+	SurgeMultiplier float64
+	IsSurgeActive   bool
 }
 
 // CreateDelivery creates a new delivery assignment

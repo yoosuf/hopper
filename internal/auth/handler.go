@@ -48,6 +48,17 @@ func NewHandler(authService *Service, validator *validator.Validator) *Handler {
 }
 
 // Register handles user registration
+// @Summary Register a new user
+// @Description Register a new user with email, password, and role
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Registration details"
+// @Success 201 {object} map[string]interface{} "User registered successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 409 {object} map[string]string "Email already exists"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -76,6 +87,18 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // Login handles user login
+// @Summary Login user
+// @Description Authenticate user with email and password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} map[string]interface{} "Login successful"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Invalid credentials"
+// @Failure 403 {object} map[string]string "Account suspended"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -106,6 +129,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // RefreshToken handles token refresh
+// @Summary Refresh access token
+// @Description Refresh access token using refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshRequest true "Refresh token"
+// @Success 200 {object} map[string]interface{} "Token refreshed successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Invalid or expired token"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/refresh [post]
 func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -132,6 +166,16 @@ func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout handles user logout
+// @Summary Logout user
+// @Description Invalidate refresh token on logout
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LogoutRequest true "Refresh token to invalidate"
+// @Success 204 "Logout successful"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/logout [post]
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	var req LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -149,7 +193,5 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
-		"message": "Logged out successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }

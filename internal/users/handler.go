@@ -25,6 +25,16 @@ func NewHandler(userService *Service, validator *validator.Validator) *Handler {
 }
 
 // GetProfile handles getting the current user's profile
+// @Summary Get user profile
+// @Description Retrieve the authenticated user's profile
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} User "User profile retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/profile [get]
 func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -43,6 +53,18 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateProfile handles updating the current user's profile
+// @Summary Update user profile
+// @Description Update the authenticated user's profile
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body UpdateProfileRequest true "Profile update details"
+// @Success 200 {object} User "Profile updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/profile [put]
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -67,6 +89,18 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateAddress handles creating a new address
+// @Summary Create address
+// @Description Create a new address for the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateAddressRequest true "Address details"
+// @Success 201 {object} Address "Address created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/addresses [post]
 func (h *Handler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -96,6 +130,16 @@ func (h *Handler) CreateAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListAddresses handles listing all addresses for the current user
+// @Summary List user addresses
+// @Description Retrieve all addresses for the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Address "Addresses retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/addresses [get]
 func (h *Handler) ListAddresses(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -114,6 +158,21 @@ func (h *Handler) ListAddresses(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateAddress handles updating an address
+// @Summary Update address
+// @Description Update an existing address for the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Address ID"
+// @Param request body CreateAddressRequest true "Address update details"
+// @Success 200 {object} Address "Address updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your address"
+// @Failure 404 {object} map[string]string "Address not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/addresses/{id} [put]
 func (h *Handler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -154,6 +213,20 @@ func (h *Handler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAddress handles deleting an address
+// @Summary Delete address
+// @Description Delete an address for the authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Address ID"
+// @Success 200 {object} map[string]string "Address deleted successfully"
+// @Failure 400 {object} map[string]string "Invalid address ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your address"
+// @Failure 404 {object} map[string]string "Address not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/addresses/{id} [delete]
 func (h *Handler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)

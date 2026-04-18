@@ -1,0 +1,4070 @@
+basePath: /api
+definitions:
+  admin.SystemStats:
+    properties:
+      activeDeliveries:
+        type: integer
+      totalOrders:
+        type: integer
+      totalRestaurants:
+        type: integer
+      totalUsers:
+        type: integer
+    type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  auth.RegisterRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      role:
+        enum:
+        - customer
+        - restaurant_owner
+        - courier
+        type: string
+    required:
+    - email
+    - password
+    - role
+    type: object
+  delivery.Delivery:
+    properties:
+      courierID:
+        type: string
+      deliveredAt:
+        type: string
+      id:
+        type: string
+      orderID:
+        type: string
+      pickedUpAt:
+        type: string
+      status:
+        type: string
+    type: object
+  menus.CreateMenuItemRequest:
+    properties:
+      basePrice:
+        type: integer
+      category:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      taxCategoryID:
+        type: string
+    type: object
+  menus.MenuItem:
+    properties:
+      basePrice:
+        type: integer
+      category:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      restaurantID:
+        type: string
+      taxCategoryID:
+        type: string
+    type: object
+  notifications.Notification:
+    properties:
+      body:
+        type: string
+      channels:
+        items:
+          $ref: '#/definitions/notifications.NotificationChannel'
+        type: array
+      createdAt:
+        type: string
+      data:
+        type: string
+      id:
+        type: string
+      isRead:
+        type: boolean
+      title:
+        type: string
+      type:
+        $ref: '#/definitions/notifications.NotificationType'
+      userID:
+        type: string
+    type: object
+  notifications.NotificationChannel:
+    enum:
+    - push
+    - email
+    - sms
+    type: string
+    x-enum-varnames:
+    - ChannelPush
+    - ChannelEmail
+    - ChannelSMS
+  notifications.NotificationType:
+    enum:
+    - order_created
+    - order_confirmed
+    - order_preparing
+    - order_ready
+    - order_picked_up
+    - order_delivered
+    - order_cancelled
+    - payment_received
+    - payment_failed
+    type: string
+    x-enum-varnames:
+    - TypeOrderCreated
+    - TypeOrderConfirmed
+    - TypeOrderPreparing
+    - TypeOrderReady
+    - TypeOrderPickedUp
+    - TypeOrderDelivered
+    - TypeOrderCancelled
+    - TypePaymentReceived
+    - TypePaymentFailed
+  orders.CreateOrderItem:
+    properties:
+      menuItemID:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  orders.CreateOrderRequest:
+    properties:
+      deliveryAddressID:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/orders.CreateOrderItem'
+        type: array
+      restaurantID:
+        type: string
+      scheduledFor:
+        type: string
+    type: object
+  orders.Order:
+    properties:
+      createdAt:
+        type: string
+      currencyCode:
+        type: string
+      customerID:
+        type: string
+      deliveryAddressID:
+        type: string
+      deliveryFee:
+        type: integer
+      id:
+        type: string
+      regionID:
+        type: string
+      restaurantID:
+        type: string
+      scheduledFor:
+        type: string
+      subtotal:
+        type: integer
+      tax:
+        type: integer
+      total:
+        type: integer
+      workflowState:
+        type: string
+    type: object
+  payments.CreatePaymentRequest:
+    properties:
+      amount:
+        type: integer
+      orderID:
+        type: string
+      paymentMethod:
+        type: string
+    type: object
+  payments.Payment:
+    properties:
+      amount:
+        type: integer
+      currencyCode:
+        type: string
+      id:
+        type: string
+      orderID:
+        type: string
+      paymentMethod:
+        type: string
+      paymentProviderID:
+        type: string
+      status:
+        type: string
+    type: object
+  promotions.CreatePromotionRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 3
+        type: string
+      discount_type:
+        allOf:
+        - $ref: '#/definitions/promotions.DiscountType'
+        enum:
+        - percentage
+        - fixed
+      discount_value:
+        minimum: 1
+        type: integer
+      max_discount:
+        minimum: 0
+        type: integer
+      min_order_value:
+        minimum: 0
+        type: integer
+      region_id:
+        type: string
+      restaurant_id:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/promotions.PromotionType'
+        enum:
+        - coupon
+        - discount
+        - free_delivery
+      usage_limit:
+        minimum: 0
+        type: integer
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    required:
+    - code
+    - discount_type
+    - discount_value
+    - type
+    - valid_from
+    - valid_until
+    type: object
+  promotions.DiscountType:
+    enum:
+    - percentage
+    - fixed
+    type: string
+    x-enum-varnames:
+    - DiscountTypePercentage
+    - DiscountTypeFixed
+  promotions.Promotion:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      discountType:
+        $ref: '#/definitions/promotions.DiscountType'
+      discountValue:
+        description: Percentage (0-100) or fixed amount in cents
+        type: integer
+      id:
+        type: string
+      isActive:
+        type: boolean
+      maxDiscount:
+        description: Maximum discount amount in cents
+        type: integer
+      minOrderValue:
+        description: Minimum order value in cents to apply promotion
+        type: integer
+      regionID:
+        type: string
+      restaurantID:
+        type: string
+      type:
+        $ref: '#/definitions/promotions.PromotionType'
+      updatedAt:
+        type: string
+      usageCount:
+        description: Current usage count
+        type: integer
+      usageLimit:
+        description: Maximum number of times it can be used (0 = unlimited)
+        type: integer
+      validFrom:
+        type: string
+      validUntil:
+        type: string
+    type: object
+  promotions.PromotionType:
+    enum:
+    - coupon
+    - discount
+    - free_delivery
+    type: string
+    x-enum-varnames:
+    - PromotionTypeCoupon
+    - PromotionTypeDiscount
+    - PromotionTypeFreeDelivery
+  promotions.UpdatePromotionRequest:
+    properties:
+      code:
+        maxLength: 50
+        minLength: 3
+        type: string
+      discount_type:
+        allOf:
+        - $ref: '#/definitions/promotions.DiscountType'
+        enum:
+        - percentage
+        - fixed
+      discount_value:
+        minimum: 1
+        type: integer
+      is_active:
+        type: boolean
+      max_discount:
+        minimum: 0
+        type: integer
+      min_order_value:
+        minimum: 0
+        type: integer
+      region_id:
+        type: string
+      restaurant_id:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/promotions.PromotionType'
+        enum:
+        - coupon
+        - discount
+        - free_delivery
+      usage_limit:
+        minimum: 0
+        type: integer
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    type: object
+  regions.Region:
+    properties:
+      code:
+        type: string
+      countryCode:
+        type: string
+      currencyCode:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      timezone:
+        type: string
+    type: object
+  regions.RegionConfig:
+    properties:
+      allowScheduledOrders:
+        type: boolean
+      defaultDeliveryWindowMinutes:
+        type: integer
+      deliveryFeeTaxableDefault:
+        type: boolean
+      orderActivationLeadMinutes:
+        type: integer
+      platformFeeBasisPoints:
+        type: integer
+      regionID:
+        type: string
+    type: object
+  restaurants.CreateRestaurantRequest:
+    properties:
+      city:
+        type: string
+      countryCode:
+        type: string
+      cuisineType:
+        type: string
+      description:
+        type: string
+      email:
+        type: string
+      latitude:
+        format: float64
+        type: number
+      longitude:
+        format: float64
+        type: number
+      name:
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      regionID:
+        type: string
+      state:
+        type: string
+      streetAddress:
+        type: string
+      timezone:
+        type: string
+    type: object
+  restaurants.Restaurant:
+    properties:
+      approvedAt:
+        type: string
+      city:
+        type: string
+      countryCode:
+        type: string
+      cuisineType:
+        type: string
+      currencyCode:
+        type: string
+      description:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      isApproved:
+        type: boolean
+      latitude:
+        format: float64
+        type: number
+      longitude:
+        format: float64
+        type: number
+      name:
+        type: string
+      ownerID:
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      regionID:
+        type: string
+      state:
+        type: string
+      streetAddress:
+        type: string
+      timezone:
+        type: string
+    type: object
+  restaurants.RestaurantHour:
+    properties:
+      closeTime:
+        type: string
+      dayOfWeek:
+        type: integer
+      id:
+        type: string
+      isClosed:
+        type: boolean
+      openTime:
+        type: string
+      restaurantID:
+        type: string
+    type: object
+  reviews.CreateReviewRequest:
+    properties:
+      comment:
+        maxLength: 1000
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      target_id:
+        type: string
+      target_type:
+        enum:
+        - restaurant
+        - courier
+        - menu_item
+        type: string
+    required:
+    - rating
+    - target_id
+    - target_type
+    type: object
+  reviews.ReviewResponse:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      rating:
+        type: integer
+      target_id:
+        type: string
+      target_type:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  reviews.UpdateReviewRequest:
+    properties:
+      comment:
+        maxLength: 1000
+        type: string
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+    type: object
+  support.CreateMessageRequest:
+    properties:
+      content:
+        type: string
+    type: object
+  support.CreateTicketRequest:
+    properties:
+      category:
+        type: string
+      description:
+        type: string
+      priority:
+        $ref: '#/definitions/support.TicketPriority'
+      subject:
+        type: string
+    type: object
+  support.Message:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isSupport:
+        type: boolean
+      ticketID:
+        type: string
+      userID:
+        type: string
+    type: object
+  support.Ticket:
+    properties:
+      assignedTo:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      priority:
+        $ref: '#/definitions/support.TicketPriority'
+      resolvedAt:
+        type: string
+      status:
+        $ref: '#/definitions/support.TicketStatus'
+      subject:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+    type: object
+  support.TicketPriority:
+    enum:
+    - low
+    - medium
+    - high
+    - urgent
+    type: string
+    x-enum-varnames:
+    - TicketPriorityLow
+    - TicketPriorityMedium
+    - TicketPriorityHigh
+    - TicketPriorityUrgent
+  support.TicketStatus:
+    enum:
+    - open
+    - in_progress
+    - resolved
+    - closed
+    type: string
+    x-enum-varnames:
+    - TicketStatusOpen
+    - TicketStatusInProgress
+    - TicketStatusResolved
+    - TicketStatusClosed
+  support.UpdateTicketRequest:
+    properties:
+      priority:
+        $ref: '#/definitions/support.TicketPriority'
+      status:
+        $ref: '#/definitions/support.TicketStatus'
+    type: object
+  tax.CalculateTaxRequest:
+    properties:
+      deliveryFee:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/tax.TaxableItem'
+        type: array
+      pricingMode:
+        type: string
+      taxZoneID:
+        type: string
+    type: object
+  tax.TaxCalculation:
+    properties:
+      deliveryTax:
+        type: integer
+      itemTax:
+        type: integer
+      taxLines:
+        items:
+          $ref: '#/definitions/tax.TaxLine'
+        type: array
+      totalTax:
+        type: integer
+    type: object
+  tax.TaxCategory:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  tax.TaxLine:
+    properties:
+      isInclusive:
+        type: boolean
+      taxAmount:
+        type: integer
+      taxCategoryID:
+        type: string
+      taxRateBPS:
+        type: integer
+      taxRateName:
+        type: string
+      taxableAmount:
+        type: integer
+    type: object
+  tax.TaxRate:
+    properties:
+      appliesToDeliveryFee:
+        type: boolean
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      isInclusive:
+        type: boolean
+      name:
+        type: string
+      rateBPS:
+        type: integer
+      taxCategoryID:
+        type: string
+      taxZoneID:
+        type: string
+    type: object
+  tax.TaxZone:
+    properties:
+      city:
+        type: string
+      code:
+        type: string
+      countryCode:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      name:
+        type: string
+      postalCodePattern:
+        type: string
+      state:
+        type: string
+    type: object
+  tax.TaxableItem:
+    properties:
+      amount:
+        type: integer
+      taxCategoryID:
+        type: string
+    type: object
+  users.Address:
+    properties:
+      city:
+        type: string
+      countryCode:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      latitude:
+        format: float64
+        type: number
+      longitude:
+        format: float64
+        type: number
+      postalCode:
+        type: string
+      state:
+        type: string
+      streetAddress:
+        type: string
+      userID:
+        type: string
+    type: object
+  users.CreateAddressRequest:
+    properties:
+      city:
+        type: string
+      countryCode:
+        type: string
+      isDefault:
+        type: boolean
+      latitude:
+        format: float64
+        type: number
+      longitude:
+        format: float64
+        type: number
+      postalCode:
+        type: string
+      state:
+        type: string
+      streetAddress:
+        type: string
+    type: object
+  users.UpdateProfileRequest:
+    properties:
+      firstName:
+        type: string
+      lastName:
+        type: string
+    type: object
+  users.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      isSuspended:
+        type: boolean
+      lastName:
+        type: string
+      passwordHash:
+        type: string
+      role:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is a sample server for an Uber Eats clone API. You can visit the
+    Swagger UI documentation at /swagger/index.html
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Uber Eats Clone API
+  version: "1.0"
+paths:
+  /admin/restaurants/{id}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Approve a restaurant registration (admin only)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurant approved successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - admin only
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve restaurant
+      tags:
+      - admin
+  /admin/restaurants/{id}/reject:
+    put:
+      consumes:
+      - application/json
+      description: Reject a restaurant registration (admin only)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurant rejected successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - admin only
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject restaurant
+      tags:
+      - admin
+  /admin/restaurants/pending:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all restaurants pending approval (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pending restaurants retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - admin only
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List pending restaurants
+      tags:
+      - admin
+  /admin/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve system statistics (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: System statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/admin.SystemStats'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - admin only
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get system statistics
+      tags:
+      - admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Account suspended
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate refresh token on logout
+      parameters:
+      - description: Refresh token to invalidate
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Logout successful
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh access token using refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid or expired token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email, password, and role
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /delivery/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific delivery by its ID
+      parameters:
+      - description: Delivery ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery retrieved successfully
+          schema:
+            $ref: '#/definitions/delivery.Delivery'
+        "400":
+          description: Invalid delivery ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Delivery not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get delivery by ID
+      tags:
+      - delivery
+  /delivery/{id}/delivered:
+    put:
+      consumes:
+      - application/json
+      description: Mark a delivery as delivered by the courier
+      parameters:
+      - description: Delivery ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery marked as delivered successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid delivery ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Delivery not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark delivery as delivered
+      tags:
+      - delivery
+  /delivery/{id}/picked-up:
+    put:
+      consumes:
+      - application/json
+      description: Mark a delivery as picked up by the courier
+      parameters:
+      - description: Delivery ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery marked as picked up successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid delivery ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Delivery not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark delivery as picked up
+      tags:
+      - delivery
+  /delivery/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a delivery
+      parameters:
+      - description: Delivery ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: query
+        name: status
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delivery status updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Delivery not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update delivery status
+      tags:
+      - delivery
+  /delivery/courier:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all deliveries for the authenticated courier
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deliveries retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/delivery.Delivery'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List courier deliveries
+      tags:
+      - delivery
+  /menus/{restaurant_id}/items:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all menu items for a specific restaurant
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: restaurant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menu items retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/menus.MenuItem'
+            type: array
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List menu items for restaurant
+      tags:
+      - menus
+    post:
+      consumes:
+      - application/json
+      description: Create a new menu item for a restaurant
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: restaurant_id
+        required: true
+        type: string
+      - description: Menu item details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/menus.CreateMenuItemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Menu item created successfully
+          schema:
+            $ref: '#/definitions/menus.MenuItem'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your restaurant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create menu item
+      tags:
+      - menus
+  /menus/{restaurant_id}/items/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a menu item (only by restaurant owner)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: restaurant_id
+        required: true
+        type: string
+      - description: Menu Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Menu item deleted successfully
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your restaurant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Menu item not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete menu item
+      tags:
+      - menus
+    put:
+      consumes:
+      - application/json
+      description: Update a menu item (only by restaurant owner)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: restaurant_id
+        required: true
+        type: string
+      - description: Menu Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Menu item details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/menus.CreateMenuItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menu item updated successfully
+          schema:
+            $ref: '#/definitions/menus.MenuItem'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your restaurant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Menu item not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update menu item
+      tags:
+      - menus
+  /menus/items/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific menu item by its ID
+      parameters:
+      - description: Menu Item ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menu item retrieved successfully
+          schema:
+            $ref: '#/definitions/menus.MenuItem'
+        "400":
+          description: Invalid menu item ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Menu item not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get menu item by ID
+      tags:
+      - menus
+  /notifications:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all notifications for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notifications retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/notifications.Notification'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user notifications
+      tags:
+      - notifications
+  /notifications/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific notification by its ID
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification retrieved successfully
+          schema:
+            $ref: '#/definitions/notifications.Notification'
+        "400":
+          description: Invalid notification ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your notification
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get notification by ID
+      tags:
+      - notifications
+  /notifications/{id}/read:
+    put:
+      consumes:
+      - application/json
+      description: Mark a notification as read (only by the recipient)
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Notification marked as read successfully
+        "400":
+          description: Invalid notification ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your notification
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - notifications
+  /notifications/read-all:
+    put:
+      consumes:
+      - application/json
+      description: Mark all notifications for the authenticated user as read
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All notifications marked as read successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /orders:
+    post:
+      consumes:
+      - application/json
+      description: Create a new order with items, restaurant, and delivery address
+      parameters:
+      - description: Order details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/orders.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            $ref: '#/definitions/orders.Order'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new order
+      tags:
+      - orders
+  /orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific order by its ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order retrieved successfully
+          schema:
+            $ref: '#/definitions/orders.Order'
+        "400":
+          description: Invalid order ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Order not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get order by ID
+      tags:
+      - orders
+  /orders/{id}/cancel:
+    put:
+      consumes:
+      - application/json
+      description: Cancel an order by ID (only allowed in certain workflow states)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Order cancelled successfully
+        "400":
+          description: Invalid order ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Order cannot be cancelled
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Order not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel an order
+      tags:
+      - orders
+  /orders/my:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all orders for the authenticated customer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Orders retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/orders.Order'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List customer orders
+      tags:
+      - orders
+  /orders/restaurant/{restaurant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all orders for a specific restaurant
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: restaurant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Orders retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/orders.Order'
+            type: array
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your restaurant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List restaurant orders
+      tags:
+      - orders
+  /payments:
+    post:
+      consumes:
+      - application/json
+      description: Create a new payment for an order
+      parameters:
+      - description: Payment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/payments.CreatePaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Payment created successfully
+          schema:
+            $ref: '#/definitions/payments.Payment'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create payment
+      tags:
+      - payments
+  /payments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific payment by its ID
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment retrieved successfully
+          schema:
+            $ref: '#/definitions/payments.Payment'
+        "400":
+          description: Invalid payment ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Payment not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get payment by ID
+      tags:
+      - payments
+  /payments/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a payment (internal use for payment providers)
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: query
+        name: status
+        required: true
+        type: string
+      - description: Payment provider ID
+        in: query
+        name: provider_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment status updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Payment not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update payment status
+      tags:
+      - payments
+  /payments/order/{order_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all payments for a specific order
+      parameters:
+      - description: Order ID
+        in: path
+        name: order_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payments retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/payments.Payment'
+            type: array
+        "400":
+          description: Invalid order ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List order payments
+      tags:
+      - payments
+  /promotions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all promotions with optional filters
+      parameters:
+      - description: Filter by region ID
+        in: query
+        name: region_id
+        type: string
+      - description: Filter by restaurant ID
+        in: query
+        name: restaurant_id
+        type: string
+      - default: false
+        description: Filter only active promotions
+        in: query
+        name: active_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Promotions retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/promotions.Promotion'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List promotions
+      tags:
+      - promotions
+    post:
+      consumes:
+      - application/json
+      description: Create a new promotion/discount/coupon
+      parameters:
+      - description: Promotion details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/promotions.CreatePromotionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Promotion created successfully
+          schema:
+            $ref: '#/definitions/promotions.Promotion'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new promotion
+      tags:
+      - promotions
+  /promotions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a promotion
+      parameters:
+      - description: Promotion ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Promotion deleted successfully
+        "400":
+          description: Invalid promotion ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Promotion not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete promotion
+      tags:
+      - promotions
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific promotion by its ID
+      parameters:
+      - description: Promotion ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Promotion retrieved successfully
+          schema:
+            $ref: '#/definitions/promotions.Promotion'
+        "400":
+          description: Invalid promotion ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Promotion not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get promotion by ID
+      tags:
+      - promotions
+    put:
+      consumes:
+      - application/json
+      description: Update an existing promotion
+      parameters:
+      - description: Promotion ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Promotion update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/promotions.UpdatePromotionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Promotion updated successfully
+          schema:
+            $ref: '#/definitions/promotions.Promotion'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Promotion not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update promotion
+      tags:
+      - promotions
+  /promotions/code/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a promotion by its code
+      parameters:
+      - description: Promotion code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Promotion retrieved successfully
+          schema:
+            $ref: '#/definitions/promotions.Promotion'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Promotion not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get promotion by code
+      tags:
+      - promotions
+  /promotions/use:
+    post:
+      consumes:
+      - application/json
+      description: Mark a promotion as used (decrement usage count)
+      parameters:
+      - description: Promotion ID
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Promotion marked as used successfully
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Promotion not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark promotion as used
+      tags:
+      - promotions
+  /promotions/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validate if a promotion code is valid for the given order
+      parameters:
+      - description: Promotion validation details
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Promotion validation result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request or promotion
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Validate promotion code
+      tags:
+      - promotions
+  /regions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all active regions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Regions retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/regions.Region'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List all regions
+      tags:
+      - regions
+  /regions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific region by its ID
+      parameters:
+      - description: Region ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Region retrieved successfully
+          schema:
+            $ref: '#/definitions/regions.Region'
+        "400":
+          description: Invalid region ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Region not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get region by ID
+      tags:
+      - regions
+  /regions/config:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the configuration for a specific region
+      parameters:
+      - description: Region ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Region configuration retrieved successfully
+          schema:
+            $ref: '#/definitions/regions.RegionConfig'
+        "400":
+          description: Invalid region ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Region not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get region configuration
+      tags:
+      - regions
+  /restaurants:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all restaurants in a specific region
+      parameters:
+      - description: Region ID
+        in: query
+        name: region_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurants retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/restaurants.Restaurant'
+            type: array
+        "400":
+          description: Invalid region ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List restaurants
+      tags:
+      - restaurants
+    post:
+      consumes:
+      - application/json
+      description: Create a new restaurant for the authenticated user
+      parameters:
+      - description: Restaurant details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/restaurants.CreateRestaurantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Restaurant created successfully
+          schema:
+            $ref: '#/definitions/restaurants.Restaurant'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new restaurant
+      tags:
+      - restaurants
+  /restaurants/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific restaurant by its ID
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurant retrieved successfully
+          schema:
+            $ref: '#/definitions/restaurants.Restaurant'
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get restaurant by ID
+      tags:
+      - restaurants
+    put:
+      consumes:
+      - application/json
+      description: Update restaurant details (only by owner)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Restaurant details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/restaurants.CreateRestaurantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurant updated successfully
+          schema:
+            $ref: '#/definitions/restaurants.Restaurant'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update restaurant
+      tags:
+      - restaurants
+  /restaurants/{id}/hours:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the operating hours for a restaurant
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operating hours retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/restaurants.RestaurantHour'
+            type: array
+        "400":
+          description: Invalid restaurant ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get restaurant operating hours
+      tags:
+      - restaurants
+    put:
+      consumes:
+      - application/json
+      description: Set the operating hours for a restaurant (only by owner)
+      parameters:
+      - description: Restaurant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Operating hours
+        in: body
+        name: request
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/restaurants.RestaurantHour'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operating hours set successfully
+          schema:
+            items:
+              $ref: '#/definitions/restaurants.RestaurantHour'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your restaurant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Restaurant not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set restaurant operating hours
+      tags:
+      - restaurants
+  /restaurants/my:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all restaurants owned by the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Restaurants retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/restaurants.Restaurant'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my restaurants
+      tags:
+      - restaurants
+  /reviews:
+    post:
+      consumes:
+      - application/json
+      description: Create a review for a restaurant, courier, or menu item
+      parameters:
+      - description: Review details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.CreateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Review created successfully
+          schema:
+            $ref: '#/definitions/reviews.ReviewResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Review already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new review
+      tags:
+      - reviews
+  /reviews/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a review (only by the reviewer)
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Review deleted successfully
+        "400":
+          description: Invalid review ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your review
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Review not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a review
+      tags:
+      - reviews
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific review by its ID
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review retrieved successfully
+          schema:
+            $ref: '#/definitions/reviews.ReviewResponse'
+        "400":
+          description: Invalid review ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Review not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get review by ID
+      tags:
+      - reviews
+    put:
+      consumes:
+      - application/json
+      description: Update an existing review (only by the reviewer)
+      parameters:
+      - description: Review ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Review update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/reviews.UpdateReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Review updated successfully
+          schema:
+            $ref: '#/definitions/reviews.ReviewResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your review
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Review not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a review
+      tags:
+      - reviews
+  /reviews/{target_type}/{target_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all reviews for a specific target (restaurant, courier,
+        or menu item)
+      parameters:
+      - description: Target type (restaurant, courier, menu_item)
+        in: path
+        name: target_type
+        required: true
+        type: string
+      - description: Target ID
+        in: path
+        name: target_id
+        required: true
+        type: string
+      - default: 20
+        description: Limit number of results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reviews retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/reviews.ReviewResponse'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List reviews for a target
+      tags:
+      - reviews
+  /reviews/{target_type}/{target_id}/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve average rating and review count for a specific target
+      parameters:
+      - description: Target type (restaurant, courier, menu_item)
+        in: path
+        name: target_type
+        required: true
+        type: string
+      - description: Target ID
+        in: path
+        name: target_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Rating statistics retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid target ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get rating statistics for target
+      tags:
+      - reviews
+  /reviews/my:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all reviews created by the authenticated user
+      parameters:
+      - default: 20
+        description: Limit number of results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reviews retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/reviews.ReviewResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user reviews
+      tags:
+      - reviews
+  /support/tickets:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all support tickets for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tickets retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/support.Ticket'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user support tickets
+      tags:
+      - support
+    post:
+      consumes:
+      - application/json
+      description: Create a new customer support ticket
+      parameters:
+      - description: Ticket details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/support.CreateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Ticket created successfully
+          schema:
+            $ref: '#/definitions/support.Ticket'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a support ticket
+      tags:
+      - support
+  /support/tickets/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific support ticket by its ID
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ticket retrieved successfully
+          schema:
+            $ref: '#/definitions/support.Ticket'
+        "400":
+          description: Invalid ticket ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ticket not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get support ticket by ID
+      tags:
+      - support
+    put:
+      consumes:
+      - application/json
+      description: Update a support ticket (status, priority, assignment)
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Ticket update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/support.UpdateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ticket updated successfully
+          schema:
+            $ref: '#/definitions/support.Ticket'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ticket not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update support ticket
+      tags:
+      - support
+  /support/tickets/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all messages for a specific support ticket
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Messages retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/support.Message'
+            type: array
+        "400":
+          description: Invalid ticket ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ticket not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List messages in support ticket
+      tags:
+      - support
+    post:
+      consumes:
+      - application/json
+      description: Add a message to a support ticket
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/support.CreateMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Message created successfully
+          schema:
+            $ref: '#/definitions/support.Message'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Ticket not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create message in support ticket
+      tags:
+      - support
+  /tax/calculate:
+    post:
+      consumes:
+      - application/json
+      description: Calculate tax for a given order based on region and items
+      parameters:
+      - description: Tax calculation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/tax.CalculateTaxRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax calculated successfully
+          schema:
+            $ref: '#/definitions/tax.TaxCalculation'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Calculate tax
+      tags:
+      - tax
+  /tax/categories:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all tax categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax categories retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/tax.TaxCategory'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List tax categories
+      tags:
+      - tax
+  /tax/rates:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all tax rates for a specific tax zone
+      parameters:
+      - description: Tax Zone ID
+        in: query
+        name: tax_zone_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax rates retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/tax.TaxRate'
+            type: array
+        "400":
+          description: Invalid tax zone ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List tax rates for zone
+      tags:
+      - tax
+  /tax/zones:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all tax zones
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tax zones retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/tax.TaxZone'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List tax zones
+      tags:
+      - tax
+  /users/addresses:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all addresses for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Addresses retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/users.Address'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user addresses
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new address for the authenticated user
+      parameters:
+      - description: Address details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.CreateAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Address created successfully
+          schema:
+            $ref: '#/definitions/users.Address'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create address
+      tags:
+      - users
+  /users/addresses/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an address for the authenticated user
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Address deleted successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid address ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your address
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Address not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete address
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing address for the authenticated user
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Address update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.CreateAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Address updated successfully
+          schema:
+            $ref: '#/definitions/users.Address'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden - not your address
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Address not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update address
+      tags:
+      - users
+  /users/profile:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the authenticated user's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            $ref: '#/definitions/users.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update the authenticated user's profile
+      parameters:
+      - description: Profile update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/users.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            $ref: '#/definitions/users.User'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

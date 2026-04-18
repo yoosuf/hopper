@@ -14,6 +14,9 @@ type Repository interface {
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]*Notification, error)
 	MarkAsRead(ctx context.Context, id uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) error
+	GetPreference(ctx context.Context, userID uuid.UUID, channel NotificationChannel) (*NotificationPreference, error)
+	SetPreference(ctx context.Context, pref *NotificationPreference) error
+	ListPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error)
 }
 
 // RepositoryImpl implements the Repository interface
@@ -133,4 +136,79 @@ func (r *RepositoryImpl) MarkAllAsRead(ctx context.Context, userID uuid.UUID) er
 
 	_, err := r.db.Exec(ctx, query, userID)
 	return err
+}
+
+// GetPreference retrieves a notification preference
+func (r *RepositoryImpl) GetPreference(ctx context.Context, userID uuid.UUID, channel NotificationChannel) (*NotificationPreference, error) {
+	query := `
+		SELECT user_id, channel, enabled, order_events, payment_events
+		FROM notification_preferences
+		WHERE user_id = $1 AND channel = $2
+	`
+
+	var pref NotificationPreference
+	err := r.db.QueryRow(ctx, query, userID, channel).Scan(
+		&pref.UserID,
+		&pref.Channel,
+		&pref.Enabled,
+		&pref.OrderEvents,
+		&pref.PaymentEvents,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pref, nil
+}
+
+// SetPreference sets a notification preference
+func (r *RepositoryImpl) SetPreference(ctx context.Context, pref *NotificationPreference) error {
+	query := `
+		INSERT INTO notification_preferences (user_id, channel, enabled, order_events, payment_events, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW() AT TIME ZONE 'UTC', NOW() AT TIME ZONE 'UTC')
+		ON CONFLICT (user_id, channel)
+		DO UPDATE SET enabled = $3, order_events = $4, payment_events = $5, updated_at = NOW() AT TIME ZONE 'UTC'
+	`
+
+	_, err := r.db.Exec(ctx, query,
+		pref.UserID,
+		pref.Channel,
+		pref.Enabled,
+		pref.OrderEvents,
+		pref.PaymentEvents,
+	)
+	return err
+}
+
+// ListPreferences retrieves all notification preferences for a user
+func (r *RepositoryImpl) ListPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error) {
+	query := `
+		SELECT user_id, channel, enabled, order_events, payment_events
+		FROM notification_preferences
+		WHERE user_id = $1
+	`
+
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var prefs []*NotificationPreference
+	for rows.Next() {
+		var pref NotificationPreference
+		err := rows.Scan(
+			&pref.UserID,
+			&pref.Channel,
+			&pref.Enabled,
+			&pref.OrderEvents,
+			&pref.PaymentEvents,
+		)
+		if err != nil {
+			return nil, err
+		}
+		prefs = append(prefs, &pref)
+	}
+
+	return prefs, nil
 }

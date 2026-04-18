@@ -52,12 +52,17 @@ docker-logs:
 # Run database migrations
 migrate:
 	@echo "Running database migrations..."
-	# TODO: Implement migration runner
+	psql postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE) < migrations/000001_initial_schema.up.sql
+
+# Rollback database migrations
+migrate-down:
+	@echo "Rolling back database migrations..."
+	psql postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE) < migrations/000001_initial_schema.down.sql
 
 # Seed database with sample data
 seed:
 	@echo "Seeding database..."
-	psql postgres://hopper:hopper_password@localhost:5432/hopper?sslmode=disable < scripts/seed.sql
+	psql postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE) < seeds/seed.sql
 
 # Format code
 fmt:

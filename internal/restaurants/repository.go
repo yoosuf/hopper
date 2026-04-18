@@ -18,6 +18,8 @@ type Repository interface {
 	DeleteHours(ctx context.Context, restaurantID uuid.UUID) error
 	CreateHour(ctx context.Context, hour *RestaurantHour) error
 	ListHours(ctx context.Context, restaurantID uuid.UUID) ([]*RestaurantHour, error)
+	Search(ctx context.Context, req *SearchRequest) ([]*Restaurant, int, error)
+	GetRatingStats(ctx context.Context, restaurantID uuid.UUID) (map[string]interface{}, error)
 }
 
 // RepositoryImpl implements the Repository interface
@@ -293,4 +295,150 @@ func (r *RepositoryImpl) ListHours(ctx context.Context, restaurantID uuid.UUID) 
 	}
 
 	return hours, nil
+}
+
+// Search performs advanced search with filtering and pagination
+func (r *RepositoryImpl) Search(ctx context.Context, req *SearchRequest) ([]*Restaurant, int, error) {
+	// Build WHERE clause dynamically
+	whereConditions := []string{"deleted_at IS NULL", "is_active = true", "is_approved = true"}
+	args := []interface{}{}
+	argIndex := 1
+
+	if req.RegionID != nil {
+		whereConditions = append(whereConditions, "region_id = $"+string(rune('0'+argIndex)))
+		args = append(args, req.RegionID)
+		argIndex++
+	}
+
+	if req.CuisineType != nil {
+		whereConditions = append(whereConditions, "cuisine_type = $"+string(rune('0'+argIndex)))
+		args = append(args, req.CuisineType)
+		argIndex++
+	}
+
+	if req.SearchQuery != nil {
+		whereConditions = append(whereConditions, "(name ILIKE $"+string(rune('0'+argIndex))+" OR description ILIKE $"+string(rune('0'+argIndex))+")")
+		searchPattern := "%" + *req.SearchQuery + "%"
+		args = append(args, searchPattern, searchPattern)
+		argIndex += 2
+	}
+
+	// Build the query
+	baseQuery := `
+		SELECT id, owner_id, name, description, cuisine_type, street_address, city, state_or_province, postal_code, country_code, latitude, longitude, phone, email, region_id, currency_code, timezone, is_active, is_approved, approved_at
+		FROM restaurants
+		WHERE ` + joinConditions(whereConditions)
+
+	// Get total count
+	countQuery := "SELECT COUNT(*) FROM restaurants WHERE " + joinConditions(whereConditions)
+	var total int
+	err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Add sorting
+	sortClause := "ORDER BY " + req.SortBy + " " + req.SortOrder
+	if req.SortBy == "rating" {
+		// For rating sorting, we need to join with reviews
+		sortClause = "ORDER BY avg_rating " + req.SortOrder
+	}
+
+	// Add pagination
+	query := baseQuery + " " + sortClause + " LIMIT $" + string(rune('0'+argIndex)) + " OFFSET $" + string(rune('0'+argIndex+1))
+	args = append(args, req.Limit, req.Offset)
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var restaurants []*Restaurant
+	for rows.Next() {
+		var restaurant Restaurant
+		err := rows.Scan(
+			&restaurant.ID,
+			&restaurant.OwnerID,
+			&restaurant.Name,
+			&restaurant.Description,
+			&restaurant.CuisineType,
+			&restaurant.StreetAddress,
+			&restaurant.City,
+			&restaurant.State,
+			&restaurant.PostalCode,
+			&restaurant.CountryCode,
+			&restaurant.Latitude,
+			&restaurant.Longitude,
+			&restaurant.Phone,
+			&restaurant.Email,
+			&restaurant.RegionID,
+			&restaurant.CurrencyCode,
+			&restaurant.Timezone,
+			&restaurant.IsActive,
+			&restaurant.IsApproved,
+			&restaurant.ApprovedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		restaurants = append(restaurants, &restaurant)
+	}
+
+	return restaurants, total, nil
+}
+
+// GetRatingStats retrieves rating statistics for a restaurant
+func (r *RepositoryImpl) GetRatingStats(ctx context.Context, restaurantID uuid.UUID) (map[string]interface{}, error) {
+	query := `
+		SELECT 
+			COUNT(*) as total_reviews,
+			COALESCE(AVG(rating), 0) as average_rating,
+			COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star,
+			COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star,
+			COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star,
+			COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star,
+			COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star
+		FROM reviews
+		WHERE target_type = 'restaurant' AND target_id = $1 AND deleted_at IS NULL
+	`
+
+	var totalReviews int
+	var avgRating float64
+	var fiveStar, fourStar, threeStar, twoStar, oneStar int
+
+	err := r.db.QueryRow(ctx, query, restaurantID).Scan(
+		&totalReviews,
+		&avgRating,
+		&fiveStar,
+		&fourStar,
+		&threeStar,
+		&twoStar,
+		&oneStar,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"total_reviews":    totalReviews,
+		"average_rating":   avgRating,
+		"five_star_count":  fiveStar,
+		"four_star_count":  fourStar,
+		"three_star_count": threeStar,
+		"two_star_count":   twoStar,
+		"one_star_count":   oneStar,
+	}, nil
+}
+
+// joinConditions joins WHERE conditions with AND
+func joinConditions(conditions []string) string {
+	result := ""
+	for i, cond := range conditions {
+		if i > 0 {
+			result += " AND "
+		}
+		result += cond
+	}
+	return result
 }

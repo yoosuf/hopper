@@ -25,6 +25,18 @@ func NewHandler(restaurantService *Service, validator *validator.Validator) *Han
 }
 
 // CreateRestaurant handles creating a new restaurant
+// @Summary Create a new restaurant
+// @Description Create a new restaurant for the authenticated user
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateRestaurantRequest true "Restaurant details"
+// @Success 201 {object} Restaurant "Restaurant created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants [post]
 func (h *Handler) CreateRestaurant(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -54,6 +66,19 @@ func (h *Handler) CreateRestaurant(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetRestaurant handles getting a restaurant
+// @Summary Get restaurant by ID
+// @Description Retrieve a specific restaurant by its ID
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Restaurant ID"
+// @Success 200 {object} Restaurant "Restaurant retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid restaurant ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Restaurant not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants/{id} [get]
 func (h *Handler) GetRestaurant(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -72,6 +97,18 @@ func (h *Handler) GetRestaurant(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListRestaurants handles listing restaurants for a region
+// @Summary List restaurants
+// @Description Retrieve all restaurants in a specific region
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param region_id query string true "Region ID"
+// @Success 200 {array} Restaurant "Restaurants retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid region ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants [get]
 func (h *Handler) ListRestaurants(w http.ResponseWriter, r *http.Request) {
 	regionIDStr := r.URL.Query().Get("region_id")
 	regionID, err := uuid.Parse(regionIDStr)
@@ -90,6 +127,16 @@ func (h *Handler) ListRestaurants(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListMyRestaurants handles listing restaurants owned by the current user
+// @Summary List my restaurants
+// @Description Retrieve all restaurants owned by the authenticated user
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Restaurant "Restaurants retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants/my [get]
 func (h *Handler) ListMyRestaurants(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -108,6 +155,21 @@ func (h *Handler) ListMyRestaurants(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateRestaurant handles updating a restaurant
+// @Summary Update restaurant
+// @Description Update restaurant details (only by owner)
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Restaurant ID"
+// @Param request body CreateRestaurantRequest true "Restaurant details"
+// @Success 200 {object} Restaurant "Restaurant updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Restaurant not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants/{id} [put]
 func (h *Handler) UpdateRestaurant(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -148,6 +210,21 @@ func (h *Handler) UpdateRestaurant(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetRestaurantHours handles setting restaurant operating hours
+// @Summary Set restaurant operating hours
+// @Description Set the operating hours for a restaurant (only by owner)
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Restaurant ID"
+// @Param request body []RestaurantHour true "Operating hours"
+// @Success 200 {array} RestaurantHour "Operating hours set successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your restaurant"
+// @Failure 404 {object} map[string]string "Restaurant not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants/{id}/hours [put]
 func (h *Handler) SetRestaurantHours(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -173,6 +250,19 @@ func (h *Handler) SetRestaurantHours(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetRestaurantHours handles getting restaurant operating hours
+// @Summary Get restaurant operating hours
+// @Description Retrieve the operating hours for a restaurant
+// @Tags restaurants
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Restaurant ID"
+// @Success 200 {array} RestaurantHour "Operating hours retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid restaurant ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Restaurant not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /restaurants/{id}/hours [get]
 func (h *Handler) GetRestaurantHours(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)

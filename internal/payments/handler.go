@@ -25,6 +25,18 @@ func NewHandler(paymentService *Service, validator *validator.Validator) *Handle
 }
 
 // CreatePayment handles creating a new payment
+// @Summary Create payment
+// @Description Create a new payment for an order
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreatePaymentRequest true "Payment details"
+// @Success 201 {object} Payment "Payment created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /payments [post]
 func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	var req CreatePaymentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -47,6 +59,19 @@ func (h *Handler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPayment handles getting a payment
+// @Summary Get payment by ID
+// @Description Retrieve a specific payment by its ID
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Payment ID"
+// @Success 200 {object} Payment "Payment retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid payment ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Payment not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /payments/{id} [get]
 func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	paymentIDStr := middleware.URLParam(r, "id")
 	paymentID, err := uuid.Parse(paymentIDStr)
@@ -65,6 +90,18 @@ func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListOrderPayments handles listing payments for an order
+// @Summary List order payments
+// @Description Retrieve all payments for a specific order
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param order_id path string true "Order ID"
+// @Success 200 {array} Payment "Payments retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid order ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /payments/order/{order_id} [get]
 func (h *Handler) ListOrderPayments(w http.ResponseWriter, r *http.Request) {
 	orderIDStr := middleware.URLParam(r, "order_id")
 	orderID, err := uuid.Parse(orderIDStr)
@@ -83,6 +120,21 @@ func (h *Handler) ListOrderPayments(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdatePaymentStatus handles updating a payment's status (internal use)
+// @Summary Update payment status
+// @Description Update the status of a payment (internal use for payment providers)
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Payment ID"
+// @Param status query string true "New status"
+// @Param provider_id query string false "Payment provider ID"
+// @Success 200 {object} map[string]string "Payment status updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Payment not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /payments/{id}/status [put]
 func (h *Handler) UpdatePaymentStatus(w http.ResponseWriter, r *http.Request) {
 	paymentIDStr := middleware.URLParam(r, "id")
 	paymentID, err := uuid.Parse(paymentIDStr)

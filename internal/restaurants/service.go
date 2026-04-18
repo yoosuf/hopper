@@ -19,36 +19,36 @@ func New(repo Repository) *Service {
 
 // Restaurant represents a restaurant
 type Restaurant struct {
-	ID              uuid.UUID
-	OwnerID         uuid.UUID
-	Name            string
-	Description     string
-	CuisineType     string
-	StreetAddress   string
-	City            string
-	State           string
-	PostalCode      string
-	CountryCode     string
-	Latitude        *float64
-	Longitude       *float64
-	Phone           string
-	Email           string
-	RegionID        uuid.UUID
-	CurrencyCode    string
-	Timezone        string
-	IsActive        bool
-	IsApproved      bool
-	ApprovedAt      *string
+	ID            uuid.UUID
+	OwnerID       uuid.UUID
+	Name          string
+	Description   string
+	CuisineType   string
+	StreetAddress string
+	City          string
+	State         string
+	PostalCode    string
+	CountryCode   string
+	Latitude      *float64
+	Longitude     *float64
+	Phone         string
+	Email         string
+	RegionID      uuid.UUID
+	CurrencyCode  string
+	Timezone      string
+	IsActive      bool
+	IsApproved    bool
+	ApprovedAt    *string
 }
 
 // RestaurantHour represents restaurant operating hours
 type RestaurantHour struct {
-	ID        uuid.UUID
+	ID           uuid.UUID
 	RestaurantID uuid.UUID
-	DayOfWeek int
-	OpenTime  string
-	CloseTime string
-	IsClosed  bool
+	DayOfWeek    int
+	OpenTime     string
+	CloseTime    string
+	IsClosed     bool
 }
 
 // CreateRestaurantRequest represents a create restaurant request
@@ -76,7 +76,7 @@ func (s *Service) CreateRestaurant(ctx context.Context, ownerID uuid.UUID, req *
 		OwnerID:       ownerID,
 		Name:          req.Name,
 		Description:   req.Description,
-		CuisineType:    req.CuisineType,
+		CuisineType:   req.CuisineType,
 		StreetAddress: req.StreetAddress,
 		City:          req.City,
 		State:         req.State,
@@ -168,4 +168,60 @@ func (s *Service) SetRestaurantHours(ctx context.Context, restaurantID uuid.UUID
 // GetRestaurantHours gets restaurant operating hours
 func (s *Service) GetRestaurantHours(ctx context.Context, restaurantID uuid.UUID) ([]*RestaurantHour, error) {
 	return s.repo.ListHours(ctx, restaurantID)
+}
+
+// SearchRequest represents a restaurant search request with filters
+type SearchRequest struct {
+	RegionID      *uuid.UUID
+	CuisineType   *string
+	SearchQuery   *string
+	MinRating     *float64
+	MaxPrice      *int
+	MinPrice      *int
+	IsOpenNow     *bool
+	Latitude      *float64
+	Longitude     *float64
+	MaxDistanceKm *float64
+	SortBy        string
+	SortOrder     string
+	Limit         int
+	Offset        int
+}
+
+// SearchResponse represents a restaurant search response
+type SearchResponse struct {
+	Restaurants []*Restaurant
+	Total       int
+}
+
+// SearchRestaurants performs advanced search and filtering of restaurants
+func (s *Service) SearchRestaurants(ctx context.Context, req *SearchRequest) (*SearchResponse, error) {
+	// Set default values
+	if req.SortBy == "" {
+		req.SortBy = "name"
+	}
+	if req.SortOrder == "" {
+		req.SortOrder = "asc"
+	}
+	if req.Limit == 0 {
+		req.Limit = 20
+	}
+	if req.Limit > 100 {
+		req.Limit = 100 // Max limit
+	}
+
+	restaurants, total, err := s.repo.Search(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search restaurants: %w", err)
+	}
+
+	return &SearchResponse{
+		Restaurants: restaurants,
+		Total:       total,
+	}, nil
+}
+
+// GetRestaurantRatingStats retrieves rating statistics for a restaurant
+func (s *Service) GetRestaurantRatingStats(ctx context.Context, restaurantID uuid.UUID) (map[string]interface{}, error) {
+	return s.repo.GetRatingStats(ctx, restaurantID)
 }

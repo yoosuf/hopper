@@ -25,6 +25,20 @@ func NewHandler(menuService *Service, validator *validator.Validator) *Handler {
 }
 
 // CreateMenuItem handles creating a new menu item
+// @Summary Create menu item
+// @Description Create a new menu item for a restaurant
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param restaurant_id path string true "Restaurant ID"
+// @Param request body CreateMenuItemRequest true "Menu item details"
+// @Success 201 {object} MenuItem "Menu item created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your restaurant"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /menus/{restaurant_id}/items [post]
 func (h *Handler) CreateMenuItem(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "restaurant_id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -54,6 +68,19 @@ func (h *Handler) CreateMenuItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMenuItem handles getting a menu item
+// @Summary Get menu item by ID
+// @Description Retrieve a specific menu item by its ID
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Menu Item ID"
+// @Success 200 {object} MenuItem "Menu item retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid menu item ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Menu item not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /menus/items/{id} [get]
 func (h *Handler) GetMenuItem(w http.ResponseWriter, r *http.Request) {
 	menuItemIDStr := middleware.URLParam(r, "id")
 	menuItemID, err := uuid.Parse(menuItemIDStr)
@@ -72,6 +99,18 @@ func (h *Handler) GetMenuItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListMenuItems handles listing menu items for a restaurant
+// @Summary List menu items for restaurant
+// @Description Retrieve all menu items for a specific restaurant
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param restaurant_id path string true "Restaurant ID"
+// @Success 200 {array} MenuItem "Menu items retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid restaurant ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /menus/{restaurant_id}/items [get]
 func (h *Handler) ListMenuItems(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "restaurant_id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -90,6 +129,22 @@ func (h *Handler) ListMenuItems(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateMenuItem handles updating a menu item
+// @Summary Update menu item
+// @Description Update a menu item (only by restaurant owner)
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param restaurant_id path string true "Restaurant ID"
+// @Param id path string true "Menu Item ID"
+// @Param request body CreateMenuItemRequest true "Menu item details"
+// @Success 200 {object} MenuItem "Menu item updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your restaurant"
+// @Failure 404 {object} map[string]string "Menu item not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /menus/{restaurant_id}/items/{id} [put]
 func (h *Handler) UpdateMenuItem(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "restaurant_id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -130,6 +185,21 @@ func (h *Handler) UpdateMenuItem(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteMenuItem handles deleting a menu item
+// @Summary Delete menu item
+// @Description Delete a menu item (only by restaurant owner)
+// @Tags menus
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param restaurant_id path string true "Restaurant ID"
+// @Param id path string true "Menu Item ID"
+// @Success 204 "Menu item deleted successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your restaurant"
+// @Failure 404 {object} map[string]string "Menu item not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /menus/{restaurant_id}/items/{id} [delete]
 func (h *Handler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 	restaurantIDStr := middleware.URLParam(r, "restaurant_id")
 	restaurantID, err := uuid.Parse(restaurantIDStr)
@@ -145,8 +215,7 @@ func (h *Handler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.menuService.DeleteMenuItem(r.Context(), menuItemID, restaurantID)
-	if err != nil {
+	if err := h.menuService.DeleteMenuItem(r.Context(), menuItemID, restaurantID); err != nil {
 		if err.Error() == "menu item does not belong to restaurant" {
 			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Menu item does not belong to restaurant", nil)
 			return
@@ -155,7 +224,5 @@ func (h *Handler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
-		"message": "Menu item deleted successfully",
-	})
+	w.WriteHeader(http.StatusNoContent)
 }

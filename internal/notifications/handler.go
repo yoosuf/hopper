@@ -21,6 +21,20 @@ func NewHandler(notificationService *Service) *Handler {
 }
 
 // GetNotification handles getting a notification
+// @Summary Get notification by ID
+// @Description Retrieve a specific notification by its ID
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Notification ID"
+// @Success 200 {object} Notification "Notification retrieved successfully"
+// @Failure 400 {object} map[string]string "Invalid notification ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your notification"
+// @Failure 404 {object} map[string]string "Notification not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /notifications/{id} [get]
 func (h *Handler) GetNotification(w http.ResponseWriter, r *http.Request) {
 	notificationIDStr := middleware.URLParam(r, "id")
 	notificationID, err := uuid.Parse(notificationIDStr)
@@ -39,6 +53,16 @@ func (h *Handler) GetNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListUserNotifications handles listing notifications for the current user
+// @Summary List user notifications
+// @Description Retrieve all notifications for the authenticated user
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} Notification "Notifications retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /notifications [get]
 func (h *Handler) ListUserNotifications(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -57,6 +81,20 @@ func (h *Handler) ListUserNotifications(w http.ResponseWriter, r *http.Request) 
 }
 
 // MarkAsRead handles marking a notification as read
+// @Summary Mark notification as read
+// @Description Mark a notification as read (only by the recipient)
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Notification ID"
+// @Success 204 "Notification marked as read successfully"
+// @Failure 400 {object} map[string]string "Invalid notification ID"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden - not your notification"
+// @Failure 404 {object} map[string]string "Notification not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /notifications/{id}/read [put]
 func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)
@@ -88,6 +126,16 @@ func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 }
 
 // MarkAllAsRead handles marking all notifications for the current user as read
+// @Summary Mark all notifications as read
+// @Description Mark all notifications for the authenticated user as read
+// @Tags notifications
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]string "All notifications marked as read successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /notifications/read-all [put]
 func (h *Handler) MarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 	userIDStr := middleware.GetUserID(r.Context())
 	userID, err := uuid.Parse(userIDStr)

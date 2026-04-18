@@ -11,6 +11,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 
+	_ "github.com/crewdigital/hopper/docs"
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/crewdigital/hopper/internal/admin"
 	"github.com/crewdigital/hopper/internal/audit"
 	"github.com/crewdigital/hopper/internal/auth"
@@ -23,15 +26,39 @@ import (
 	"github.com/crewdigital/hopper/internal/platform/config"
 	"github.com/crewdigital/hopper/internal/platform/db"
 	"github.com/crewdigital/hopper/internal/platform/httpx"
+	"github.com/crewdigital/hopper/internal/platform/idempotency"
 	"github.com/crewdigital/hopper/internal/platform/logger"
 	"github.com/crewdigital/hopper/internal/platform/metrics"
 	"github.com/crewdigital/hopper/internal/platform/middleware"
 	"github.com/crewdigital/hopper/internal/platform/validator"
+	"github.com/crewdigital/hopper/internal/promotions"
 	"github.com/crewdigital/hopper/internal/regions"
 	"github.com/crewdigital/hopper/internal/restaurants"
+	"github.com/crewdigital/hopper/internal/reviews"
+	"github.com/crewdigital/hopper/internal/support"
 	"github.com/crewdigital/hopper/internal/tax"
 	"github.com/crewdigital/hopper/internal/users"
 )
+
+// @title           Uber Eats Clone API
+// @version         1.0
+// @description     This is a sample server for an Uber Eats clone API. You can visit the Swagger UI documentation at /swagger/index.html
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	// Load configuration
@@ -72,8 +99,12 @@ func main() {
 	deliveryRepo := delivery.NewRepository(dbPool.Pool)
 	paymentRepo := payments.NewRepository(dbPool.Pool)
 	notificationRepo := notifications.NewRepository(dbPool.Pool)
+	reviewRepo := reviews.NewRepository(dbPool.Pool)
+	promotionRepo := promotions.NewRepository(dbPool.Pool)
+	supportRepo := support.NewRepository(dbPool.Pool)
 	adminRepo := admin.NewRepository(dbPool.Pool)
 	auditRepo := audit.NewRepository(dbPool.Pool)
+	idempotencyRepo := idempotency.NewRepository(dbPool.Pool)
 
 	// Initialize services
 	authService := auth.New(authRepo, cfg.JWT.Secret, cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL)
@@ -85,23 +116,29 @@ func main() {
 	orderService := orders.New(orderRepo)
 	deliveryService := delivery.New(deliveryRepo)
 	paymentService := payments.New(paymentRepo)
-	notificationService := notifications.New(notificationRepo)
-	adminService := admin.New(adminRepo)
+	notificationService := notifications.New(notificationRepo, nil)
+	reviewService := reviews.New(reviewRepo)
+	promotionService := promotions.New(promotionRepo)
+	supportService := support.New(supportRepo)
+	_ = admin.New(adminRepo)
 	_ = jobs.New(jobQueue)
 	_ = audit.New(auditRepo)
+	_ = idempotency.New(idempotencyRepo, 24*time.Hour)
 
 	// Initialize handlers
 	authHandler := auth.NewHandler(authService, validator)
 	userHandler := users.NewHandler(userService, validator)
 	regionHandler := regions.NewHandler(regionService)
 	taxHandler := tax.NewHandler(taxService, validator)
+	supportHandler := support.NewHandler(supportService, validator)
 	restaurantHandler := restaurants.NewHandler(restaurantService, validator)
 	menuHandler := menus.NewHandler(menuService, validator)
 	orderHandler := orders.NewHandler(orderService, validator)
 	deliveryHandler := delivery.NewHandler(deliveryService)
 	paymentHandler := payments.NewHandler(paymentService, validator)
 	notificationHandler := notifications.NewHandler(notificationService)
-	adminHandler := admin.NewHandler(adminService)
+	reviewHandler := reviews.NewHandler(reviewService, validator)
+	promotionHandler := promotions.NewHandler(promotionService, validator)
 
 	// Setup router
 	router := chi.NewRouter()
@@ -128,7 +165,7 @@ func main() {
 
 	// Protected routes
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.Auth)
+		r.Use(middleware.Auth(authService))
 
 		// User routes
 		r.Get("/users/me", userHandler.GetProfile)
@@ -152,47 +189,60 @@ func main() {
 		r.Put("/restaurants/{id}/hours", restaurantHandler.SetRestaurantHours)
 
 		// Menu routes
-		r.Get("/restaurants/{restaurant_id}/menus", menuHandler.ListMenuItems)
-		r.Post("/restaurants/{restaurant_id}/menus", menuHandler.CreateMenuItem)
-		r.Get("/menus/{id}", menuHandler.GetMenuItem)
-		r.Put("/restaurants/{restaurant_id}/menus/{id}", menuHandler.UpdateMenuItem)
-		r.Delete("/restaurants/{restaurant_id}/menus/{id}", menuHandler.DeleteMenuItem)
+		r.Post("/menus", menuHandler.CreateMenuItem)
+		r.Put("/menus/{id}", menuHandler.UpdateMenuItem)
+		r.Delete("/menus/{id}", menuHandler.DeleteMenuItem)
 
 		// Order routes
-		r.Post("/orders", orderHandler.CreateOrder)
 		r.Get("/orders/{id}", orderHandler.GetOrder)
-		r.Get("/orders", orderHandler.ListCustomerOrders)
-		r.Get("/restaurants/{restaurant_id}/orders", orderHandler.ListRestaurantOrders)
-		r.Post("/orders/{id}/cancel", orderHandler.CancelOrder)
+		r.Post("/orders", orderHandler.CreateOrder)
+		r.Put("/orders/{id}/cancel", orderHandler.CancelOrder)
 
 		// Delivery routes
 		r.Get("/deliveries/{id}", deliveryHandler.GetDelivery)
-		r.Get("/couriers/deliveries", deliveryHandler.ListCourierDeliveries)
 		r.Put("/deliveries/{id}/status", deliveryHandler.UpdateDeliveryStatus)
-		r.Post("/deliveries/{id}/pickup", deliveryHandler.MarkPickedUp)
-		r.Post("/deliveries/{id}/deliver", deliveryHandler.MarkDelivered)
 
 		// Payment routes
-		r.Post("/payments", paymentHandler.CreatePayment)
 		r.Get("/payments/{id}", paymentHandler.GetPayment)
-		r.Get("/orders/{order_id}/payments", paymentHandler.ListOrderPayments)
+		r.Post("/payments", paymentHandler.CreatePayment)
 		r.Put("/payments/{id}/status", paymentHandler.UpdatePaymentStatus)
 
 		// Notification routes
-		r.Get("/notifications", notificationHandler.ListUserNotifications)
 		r.Get("/notifications/{id}", notificationHandler.GetNotification)
 		r.Put("/notifications/{id}/read", notificationHandler.MarkAsRead)
 		r.Put("/notifications/read-all", notificationHandler.MarkAllAsRead)
 
-		// Admin routes (admin role only)
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.RequireRole("admin"))
-			r.Post("/admin/restaurants/{id}/approve", adminHandler.ApproveRestaurant)
-			r.Post("/admin/restaurants/{id}/reject", adminHandler.RejectRestaurant)
-			r.Get("/admin/restaurants/pending", adminHandler.ListPendingRestaurants)
-			r.Get("/admin/stats", adminHandler.GetSystemStats)
-		})
+		// Support routes
+		r.Post("/support/tickets", supportHandler.CreateTicket)
+		r.Get("/support/tickets", supportHandler.ListUserTickets)
+		r.Get("/support/tickets/{id}", supportHandler.GetTicket)
+		r.Put("/support/tickets/{id}", supportHandler.UpdateTicket)
+		r.Post("/support/tickets/{id}/messages", supportHandler.CreateMessage)
+		r.Get("/support/tickets/{id}/messages", supportHandler.ListMessages)
+
+		// Review routes
+		r.Post("/reviews", reviewHandler.CreateReview)
+		r.Get("/reviews/{id}", reviewHandler.GetReview)
+		r.Put("/reviews/{id}", reviewHandler.UpdateReview)
+		r.Delete("/reviews/{id}", reviewHandler.DeleteReview)
+		r.Get("/reviews/my", reviewHandler.ListUserReviews)
+		r.Get("/reviews/{target_type}/{target_id}", reviewHandler.ListTargetReviews)
+		r.Get("/reviews/{target_type}/{target_id}/stats", reviewHandler.GetTargetRatingStats)
+
+		// Promotion routes
+		r.Post("/promotions", promotionHandler.CreatePromotion)
+		r.Get("/promotions", promotionHandler.ListPromotions)
+		r.Get("/promotions/{id}", promotionHandler.GetPromotion)
+		r.Get("/promotions/code/{code}", promotionHandler.GetPromotionByCode)
+		r.Put("/promotions/{id}", promotionHandler.UpdatePromotion)
+		r.Delete("/promotions/{id}", promotionHandler.DeletePromotion)
+		r.Post("/promotions/validate", promotionHandler.ValidatePromotion)
+		r.Post("/promotions/use", promotionHandler.UsePromotion)
 	})
+
+	// Swagger documentation routes
+	router.Get("/swagger/*", httpSwagger.WrapHandler)
+	router.Get("/swagger/doc.json", httpSwagger.WrapHandler)
 
 	// Health check
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {

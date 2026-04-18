@@ -3,6 +3,113 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Core Tables
 
+-- Idempotency keys table
+CREATE TABLE idempotency_keys (
+    key VARCHAR(255) PRIMARY KEY,
+    scope VARCHAR(100) NOT NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    response_code INTEGER NOT NULL,
+    response_body JSONB,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_idempotency_keys_scope ON idempotency_keys(scope);
+CREATE INDEX idx_idempotency_keys_expires_at ON idempotency_keys(expires_at);
+
+-- Reviews table
+CREATE TABLE reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_type VARCHAR(50) NOT NULL CHECK (target_type IN ('restaurant', 'courier', 'menu_item')),
+    target_id UUID NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX idx_reviews_target ON reviews(target_type, target_id);
+CREATE INDEX idx_reviews_deleted_at ON reviews(deleted_at);
+
+-- Promotions table
+CREATE TABLE promotions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(50) UNIQUE NOT NULL,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('coupon', 'discount', 'free_delivery')),
+    discount_type VARCHAR(50) NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+    discount_value INTEGER NOT NULL CHECK (discount_value > 0),
+    min_order_value INTEGER NOT NULL DEFAULT 0,
+    max_discount INTEGER NOT NULL DEFAULT 0,
+    usage_limit INTEGER NOT NULL DEFAULT 0,
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    region_id UUID REFERENCES regions(id) ON DELETE CASCADE,
+    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
+    valid_from TIMESTAMP WITH TIME ZONE NOT NULL,
+    valid_until TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_promotions_code ON promotions(code);
+CREATE INDEX idx_promotions_region_id ON promotions(region_id);
+CREATE INDEX idx_promotions_restaurant_id ON promotions(restaurant_id);
+CREATE INDEX idx_promotions_active ON promotions(is_active);
+CREATE INDEX idx_promotions_validity ON promotions(valid_from, valid_until);
+CREATE INDEX idx_promotions_deleted_at ON promotions(deleted_at);
+
+-- Notification preferences table
+CREATE TABLE notification_preferences (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    channel VARCHAR(50) NOT NULL CHECK (channel IN ('push', 'email', 'sms')),
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    order_events BOOLEAN NOT NULL DEFAULT true,
+    payment_events BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, channel)
+);
+
+CREATE INDEX idx_notification_preferences_user_id ON notification_preferences(user_id);
+
+-- Support tickets table
+CREATE TABLE support_tickets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    subject VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+    priority VARCHAR(50) NOT NULL CHECK (priority IN ('low', 'medium', 'high', 'urgent')) DEFAULT 'medium',
+    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+    resolved_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX idx_support_tickets_assigned_to ON support_tickets(assigned_to);
+CREATE INDEX idx_support_tickets_deleted_at ON support_tickets(deleted_at);
+
+-- Support messages table
+CREATE TABLE support_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ticket_id UUID NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_support BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_support_messages_ticket_id ON support_messages(ticket_id);
+CREATE INDEX idx_support_messages_user_id ON support_messages(user_id);
+
 -- Users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
