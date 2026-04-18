@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: hopper-postgres
+    environment:
+      POSTGRES_DB: hopper
+      POSTGRES_USER: hopper
+      POSTGRES_PASSWORD: hopper_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hopper"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    container_name: hopper-api
+    environment:
+      DATABASE_URL: postgres://hopper:hopper_password@postgres:5432/hopper?sslmode=disable
+      JWT_SECRET: your-secret-key-change-in-production
+      PORT: 8080
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: hopper-worker
+    environment:
+      DATABASE_URL: postgres://hopper:hopper_password@postgres:5432/hopper?sslmode=disable
+      JWT_SECRET: your-secret-key-change-in-production
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

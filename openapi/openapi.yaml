@@ -1,0 +1,1385 @@
+openapi: 3.0.3
+info:
+  title: Hopper Food Delivery API
+  description: Production-style Food Delivery API Backend with multi-region support, tax-aware pricing, and role-based access control.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@hopper.example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.hopper.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: Customer Profile
+    description: Customer profile and address management
+  - name: Customer Discovery
+    description: Restaurant and menu discovery for customers
+  - name: Customer Orders
+    description: Order management for customers
+  - name: Customer Payments
+    description: Payment status for customers
+  - name: Restaurant Owner
+    description: Restaurant owner management
+  - name: Courier
+    description: Courier operations
+  - name: Admin
+    description: Administrative operations
+  - name: System
+    description: Health and system endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Invalid request
+            details:
+              type: object
+        request_id:
+          type: string
+          format: uuid
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    # Authentication
+    RegisterRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [customer, restaurant_owner, courier]
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    LogoutRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/UserResponse'
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+
+    # User
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [customer, restaurant_owner, courier, admin]
+        first_name:
+          type: string
+        last_name:
+          type: string
+        is_suspended:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    AdminCreateUserRequest:
+      type: object
+      required: [email, password, role]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        role:
+          type: string
+          enum: [customer, restaurant_owner, courier, admin]
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    AdminUpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [customer, restaurant_owner, courier, admin]
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Address
+    AddressResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAddressRequest:
+      type: object
+      required: [street_address, city, state_or_province, postal_code, country_code]
+      properties:
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        is_default:
+          type: boolean
+
+    UpdateAddressRequest:
+      type: object
+      properties:
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        is_default:
+          type: boolean
+
+    AddressListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AddressResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Restaurant
+    RestaurantResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        cuisine_type:
+          type: string
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        currency_code:
+          type: string
+        timezone:
+          type: string
+        is_active:
+          type: boolean
+        is_approved:
+          type: boolean
+        region_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateRestaurantRequest:
+      type: object
+      required: [name, street_address, city, state_or_province, postal_code, country_code]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        cuisine_type:
+          type: string
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+
+    UpdateRestaurantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        cuisine_type:
+          type: string
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+
+    AdminUpdateRestaurantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        cuisine_type:
+          type: string
+        is_active:
+          type: boolean
+        is_approved:
+          type: boolean
+
+    RestaurantListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RestaurantResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Restaurant Hours
+    RestaurantHoursResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        restaurant_id:
+          type: string
+          format: uuid
+        day_of_week:
+          type: integer
+          minimum: 0
+          maximum: 6
+        open_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        close_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        is_closed:
+          type: boolean
+
+    CreateRestaurantHoursRequest:
+      type: object
+      required: [day_of_week, open_time, close_time]
+      properties:
+        day_of_week:
+          type: integer
+          minimum: 0
+          maximum: 6
+        open_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        close_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        is_closed:
+          type: boolean
+
+    UpdateRestaurantHoursRequest:
+      type: object
+      properties:
+        open_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        close_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+        is_closed:
+          type: boolean
+
+    RestaurantHoursListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RestaurantHoursResponse'
+
+    # Menu Item
+    MenuItemResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        restaurant_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price_amount:
+          type: integer
+        currency_code:
+          type: string
+        tax_category_id:
+          type: string
+          format: uuid
+        is_available:
+          type: boolean
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateMenuItemRequest:
+      type: object
+      required: [name, price_amount, tax_category_id]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price_amount:
+          type: integer
+        tax_category_id:
+          type: string
+          format: uuid
+
+    UpdateMenuItemRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price_amount:
+          type: integer
+        tax_category_id:
+          type: string
+          format: uuid
+        is_available:
+          type: boolean
+
+    MenuItemListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MenuItemResponse'
+
+    MenuResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            restaurant_id:
+              type: string
+              format: uuid
+            restaurant_name:
+              type: string
+            currency_code:
+              type: string
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/MenuItemResponse'
+
+    # Order
+    OrderResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        restaurant_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending_payment, scheduled, pending, accepted, rejected, preparing, ready_for_pickup, picked_up, delivered, cancelled]
+        delivery_type:
+          type: string
+          enum: [asap, scheduled]
+        scheduled_for:
+          type: string
+          format: date-time
+        delivery_window_start:
+          type: string
+          format: date-time
+        delivery_window_end:
+          type: string
+          format: date-time
+        activated_at:
+          type: string
+          format: date-time
+        currency_code:
+          type: string
+        subtotal_amount:
+          type: integer
+        delivery_fee_amount:
+          type: integer
+        tax_amount:
+          type: integer
+        total_amount:
+          type: integer
+        pricing_mode:
+          type: string
+          enum: [tax_inclusive, tax_exclusive]
+        delivery_address:
+          $ref: '#/components/schemas/OrderAddress'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        tax_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxBreakdown'
+        notes:
+          type: string
+        cancellation_reason:
+          type: string
+        cancelled_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderAddress:
+      type: object
+      properties:
+        street_address:
+          type: string
+        city:
+          type: string
+        state_or_province:
+          type: string
+        postal_code:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: number
+          format: float
+        longitude:
+          type: number
+          format: float
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        menu_item_id:
+          type: string
+          format: uuid
+        item_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price_amount:
+          type: integer
+        line_subtotal_amount:
+          type: integer
+        line_tax_amount:
+          type: integer
+        line_total_amount:
+          type: integer
+        currency_code:
+          type: string
+
+    TaxBreakdown:
+      type: object
+      properties:
+        tax_category:
+          type: string
+        tax_rate_name:
+          type: string
+        tax_rate_bps:
+          type: integer
+        taxable_amount:
+          type: integer
+        tax_amount:
+          type: integer
+
+    CreateOrderRequest:
+      type: object
+      required: [restaurant_id, delivery_type, delivery_address, items]
+      properties:
+        restaurant_id:
+          type: string
+          format: uuid
+        delivery_type:
+          type: string
+          enum: [asap, scheduled]
+        scheduled_for:
+          type: string
+          format: date-time
+        delivery_address:
+          $ref: '#/components/schemas/OrderAddress'
+        items:
+          type: array
+          items:
+            type: object
+            required: [menu_item_id, quantity]
+            properties:
+              menu_item_id:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+        notes:
+          type: string
+
+    AdminUpdateOrderRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending_payment, scheduled, pending, accepted, rejected, preparing, ready_for_pickup, picked_up, delivered, cancelled]
+        cancellation_reason:
+          type: string
+
+    OrderListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Payment
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        amount_amount:
+          type: integer
+        currency_code:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, refunded]
+        payment_method:
+          type: string
+        provider_payment_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AdminUpdatePaymentRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, processing, succeeded, failed, refunded]
+
+    PaymentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PaymentResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Delivery
+    DeliveryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        courier_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending_schedule, unassigned, assigned, picked_up, delivered, failed, cancelled]
+        pickup_address:
+          $ref: '#/components/schemas/OrderAddress'
+        delivery_address:
+          $ref: '#/components/schemas/OrderAddress'
+        estimated_pickup_at:
+          type: string
+          format: date-time
+        estimated_delivery_at:
+          type: string
+          format: date-time
+        assigned_at:
+          type: string
+          format: date-time
+        picked_up_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DeliveryListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeliveryResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Courier
+    CourierResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+        vehicle_type:
+          type: string
+        is_available:
+          type: boolean
+        current_latitude:
+          type: number
+          format: float
+        current_longitude:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateCourierRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        vehicle_type:
+          type: string
+        is_available:
+          type: boolean
+        current_latitude:
+          type: number
+          format: float
+        current_longitude:
+          type: number
+          format: float
+
+    # Region
+    RegionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        country_code:
+          type: string
+        timezone:
+          type: string
+        currency_code:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateRegionRequest:
+      type: object
+      required: [code, name, country_code, timezone, currency_code]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        country_code:
+          type: string
+        timezone:
+          type: string
+        currency_code:
+          type: string
+
+    UpdateRegionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        timezone:
+          type: string
+        currency_code:
+          type: string
+        is_active:
+          type: boolean
+
+    RegionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RegionResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Region Config
+    RegionConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        region_id:
+          type: string
+          format: uuid
+        platform_fee_basis_points:
+          type: integer
+        default_delivery_window_minutes:
+          type: integer
+        order_activation_lead_minutes:
+          type: integer
+        allow_scheduled_orders:
+          type: boolean
+        delivery_fee_taxable_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateRegionConfigRequest:
+      type: object
+      required: [region_id]
+      properties:
+        region_id:
+          type: string
+          format: uuid
+        platform_fee_basis_points:
+          type: integer
+        default_delivery_window_minutes:
+          type: integer
+        order_activation_lead_minutes:
+          type: integer
+        allow_scheduled_orders:
+          type: boolean
+        delivery_fee_taxable_default:
+          type: boolean
+
+    UpdateRegionConfigRequest:
+      type: object
+      properties:
+        platform_fee_basis_points:
+          type: integer
+        default_delivery_window_minutes:
+          type: integer
+        order_activation_lead_minutes:
+          type: integer
+        allow_scheduled_orders:
+          type: boolean
+        delivery_fee_taxable_default:
+          type: boolean
+
+    RegionConfigListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RegionConfigResponse'
+
+    # Tax Category
+    TaxCategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTaxCategoryRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    UpdateTaxCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    TaxCategoryListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaxCategoryResponse'
+
+    # Tax Zone
+    TaxZoneResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        country_code:
+          type: string
+        state_or_province:
+          type: string
+        city:
+          type: string
+        postal_code_pattern:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTaxZoneRequest:
+      type: object
+      required: [code, name, country_code]
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        country_code:
+          type: string
+        state_or_province:
+          type: string
+        city:
+          type: string
+        postal_code_pattern:
+          type: string
+
+    UpdateTaxZoneRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        is_active:
+          type: boolean
+
+    TaxZoneListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaxZoneResponse'
+
+    # Tax Rate
+    TaxRateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tax_zone_id:
+          type: string
+          format: uuid
+        tax_category_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rate_bps:
+          type: integer
+        is_inclusive:
+          type: boolean
+        applies_to_delivery_fee:
+          type: boolean
+        effective_from:
+          type: string
+          format: date-time
+        effective_to:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateTaxRateRequest:
+      type: object
+      required: [tax_zone_id, tax_category_id, name, rate_bps]
+      properties:
+        tax_zone_id:
+          type: string
+          format: uuid
+        tax_category_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rate_bps:
+          type: integer
+        is_inclusive:
+          type: boolean
+        applies_to_delivery_fee:
+          type: boolean
+        effective_from:
+          type: string
+          format: date-time
+        effective_to:
+          type: string
+          format: date-time
+
+    UpdateTaxRateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        rate_bps:
+          type: integer
+        is_inclusive:
+          type: boolean
+        applies_to_delivery_fee:
+          type: boolean
+        effective_to:
+          type: string
+          format: date-time
+
+    TaxRateListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaxRateResponse'
+
+    # Audit Log
+    AuditLogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor_id:
+          type: string
+          format: uuid
+        actor_role:
+          type: string
+        action:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+        ip_address:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditLogResponse'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+
+    # Health
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        database:
+          type: string
+          example: connected
+        timestamp:
+          type: string
+          format: date-time
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ready
+        database:
+          type: string
+          example: ready
+        workers:
+          type: string
+          example: ready
