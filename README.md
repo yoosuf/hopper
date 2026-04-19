@@ -172,6 +172,8 @@ hopper/
 - `GET /deliveries/{id}` - Get delivery details
 - `GET /couriers/deliveries` - List courier deliveries
 - `PUT /deliveries/{id}/status` - Update delivery status
+- `POST /deliveries/{id}/auto-dispatch` - Auto-assign best courier (feature flag)
+- `PUT /courier/location` - Update courier live GPS location (feature flag)
 
 ### Payments
 - `POST /payments` - Create payment
@@ -199,6 +201,12 @@ The application is configured via environment variables:
 | `JWT_SECRET` | JWT signing secret | - |
 | `PORT` | API server port | `8080` |
 | `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
+| `COURIER_AUTO_DISPATCH_ENABLED` | Enable courier auto-dispatch | `false` |
+| `COURIER_ROUTE_OPTIMIZATION_ENABLED` | Enable route optimization and ETA prediction | `false` |
+| `COURIER_LIVE_TRACKING_ENABLED` | Enable live courier GPS tracking | `false` |
+| `COURIER_AUTO_REASSIGN_ENABLED` | Enable auto-reassignment for timed-out assignments | `false` |
+| `COURIER_SLA_MONITORING_ENABLED` | Enable SLA delay monitoring and alerting | `false` |
+| `COURIER_PROVIDER_INTEGRATIONS_ENABLED` | Enable maps/SMS/push provider integrations | `false` |
 
 ## Testing
 

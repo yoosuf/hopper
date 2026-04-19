@@ -1,12 +1,18 @@
 package delivery
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/yoosuf/hopper/internal/platform/httpx"
 	"github.com/yoosuf/hopper/internal/platform/middleware"
-	"github.com/google/uuid"
 )
+
+type updateCourierLocationRequest struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+}
 
 // Handler handles HTTP requests for delivery operations
 type Handler struct {
@@ -182,5 +188,63 @@ func (h *Handler) MarkDelivered(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
 		"message": "Delivery marked as delivered",
+	})
+}
+
+// AutoDispatch handles assigning the best courier to a delivery.
+func (h *Handler) AutoDispatch(w http.ResponseWriter, r *http.Request) {
+	deliveryIDStr := middleware.URLParam(r, "id")
+	deliveryID, err := uuid.Parse(deliveryIDStr)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_DELIVERY_ID", "Invalid delivery ID", nil)
+		return
+	}
+
+	courierID, err := h.deliveryService.AutoDispatch(r.Context(), deliveryID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to auto-dispatch delivery", nil)
+		return
+	}
+
+	if courierID == nil {
+		httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
+			"message": "No eligible courier found or feature disabled",
+		})
+		return
+	}
+
+	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
+		"message":    "Delivery auto-dispatched",
+		"courier_id": courierID.String(),
+	})
+}
+
+// UpdateCourierLocation handles live courier GPS updates.
+func (h *Handler) UpdateCourierLocation(w http.ResponseWriter, r *http.Request) {
+	courierIDStr := middleware.GetUserID(r.Context())
+	courierID, err := uuid.Parse(courierIDStr)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_COURIER_ID", "Invalid courier ID", nil)
+		return
+	}
+
+	var req updateCourierLocationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body", nil)
+		return
+	}
+
+	if req.Latitude < -90 || req.Latitude > 90 || req.Longitude < -180 || req.Longitude > 180 {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_COORDINATES", "Latitude/longitude out of range", nil)
+		return
+	}
+
+	if err := h.deliveryService.UpdateCourierLocation(r.Context(), courierID, req.Latitude, req.Longitude); err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update courier location", nil)
+		return
+	}
+
+	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
+		"message": "Courier location updated",
 	})
 }

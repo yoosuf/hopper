@@ -22,15 +22,17 @@ const (
 type NotificationType string
 
 const (
-	TypeOrderCreated    NotificationType = "order_created"
-	TypeOrderConfirmed  NotificationType = "order_confirmed"
-	TypeOrderPreparing  NotificationType = "order_preparing"
-	TypeOrderReady      NotificationType = "order_ready"
-	TypeOrderPickedUp   NotificationType = "order_picked_up"
-	TypeOrderDelivered  NotificationType = "order_delivered"
-	TypeOrderCancelled  NotificationType = "order_cancelled"
-	TypePaymentReceived NotificationType = "payment_received"
-	TypePaymentFailed   NotificationType = "payment_failed"
+	TypeOrderCreated     NotificationType = "order_created"
+	TypeOrderConfirmed   NotificationType = "order_confirmed"
+	TypeOrderPreparing   NotificationType = "order_preparing"
+	TypeOrderReady       NotificationType = "order_ready"
+	TypeOrderPickedUp    NotificationType = "order_picked_up"
+	TypeOrderDelivered   NotificationType = "order_delivered"
+	TypeOrderCancelled   NotificationType = "order_cancelled"
+	TypePaymentReceived  NotificationType = "payment_received"
+	TypePaymentFailed    NotificationType = "payment_failed"
+	TypeDeliveryAssigned NotificationType = "delivery_assigned"
+	TypeSLABreach        NotificationType = "sla_breach"
 )
 
 // Notification represents a notification

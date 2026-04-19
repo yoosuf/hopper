@@ -24,6 +24,7 @@ type Config struct {
 	Metrics     MetricsConfig
 	SMTP        SMTPConfig
 	Payment     PaymentConfig
+	Courier     CourierConfig
 	Idempotency IdempotencyConfig
 	Redis       RedisConfig
 }
@@ -115,6 +116,30 @@ type PaymentConfig struct {
 	ProviderSecret      string
 	StripeAPIKey        string
 	StripeWebhookSecret string
+}
+
+// CourierConfig holds courier automation and provider configuration
+type CourierConfig struct {
+	AutoDispatchEnabled         bool
+	RouteOptimizationEnabled    bool
+	LiveTrackingEnabled         bool
+	AutoReassignEnabled         bool
+	SLAMonitoringEnabled        bool
+	ProviderIntegrationsEnabled bool
+	DispatchRadiusKM            float64
+	ReassignTimeout             time.Duration
+	SLAThreshold                time.Duration
+	AverageSpeedKPH             float64
+	MapsProvider                string
+	GoogleMapsAPIKey            string
+	MapboxAPIKey                string
+	SMSProvider                 string
+	TwilioAccountSID            string
+	TwilioAuthToken             string
+	TwilioFromNumber            string
+	PushProvider                string
+	FirebaseServerKey           string
+	FirebaseEndpoint            string
 }
 
 // IdempotencyConfig holds idempotency configuration
@@ -212,6 +237,28 @@ func Load() (*Config, error) {
 			StripeAPIKey:        getEnv("STRIPE_API_KEY", ""),
 			StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		},
+		Courier: CourierConfig{
+			AutoDispatchEnabled:         getEnvBool("COURIER_AUTO_DISPATCH_ENABLED", false),
+			RouteOptimizationEnabled:    getEnvBool("COURIER_ROUTE_OPTIMIZATION_ENABLED", false),
+			LiveTrackingEnabled:         getEnvBool("COURIER_LIVE_TRACKING_ENABLED", false),
+			AutoReassignEnabled:         getEnvBool("COURIER_AUTO_REASSIGN_ENABLED", false),
+			SLAMonitoringEnabled:        getEnvBool("COURIER_SLA_MONITORING_ENABLED", false),
+			ProviderIntegrationsEnabled: getEnvBool("COURIER_PROVIDER_INTEGRATIONS_ENABLED", false),
+			DispatchRadiusKM:            getEnvFloat("COURIER_DISPATCH_RADIUS_KM", 10),
+			ReassignTimeout:             getEnvDuration("COURIER_REASSIGN_TIMEOUT", 3*time.Minute),
+			SLAThreshold:                getEnvDuration("COURIER_SLA_THRESHOLD", 15*time.Minute),
+			AverageSpeedKPH:             getEnvFloat("COURIER_AVERAGE_SPEED_KPH", 25),
+			MapsProvider:                getEnv("MAPS_PROVIDER", "mock"),
+			GoogleMapsAPIKey:            getEnv("GOOGLE_MAPS_API_KEY", ""),
+			MapboxAPIKey:                getEnv("MAPBOX_API_KEY", ""),
+			SMSProvider:                 getEnv("SMS_PROVIDER", "mock"),
+			TwilioAccountSID:            getEnv("TWILIO_ACCOUNT_SID", ""),
+			TwilioAuthToken:             getEnv("TWILIO_AUTH_TOKEN", ""),
+			TwilioFromNumber:            getEnv("TWILIO_FROM_NUMBER", ""),
+			PushProvider:                getEnv("PUSH_PROVIDER", "mock"),
+			FirebaseServerKey:           getEnv("FIREBASE_SERVER_KEY", ""),
+			FirebaseEndpoint:            getEnv("FIREBASE_ENDPOINT", "https://fcm.googleapis.com/fcm/send"),
+		},
 		Idempotency: IdempotencyConfig{
 			Enabled: getEnvBool("IDEMPOTENCY_ENABLED", true),
 			TTL:     getEnvDuration("IDEMPOTENCY_TTL", 24*time.Hour),
@@ -259,6 +306,43 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// Validate courier provider configuration when integrations are enabled.
+	if c.Courier.ProviderIntegrationsEnabled {
+		switch c.Courier.MapsProvider {
+		case "mock", "":
+		case "google_maps":
+			if c.Courier.GoogleMapsAPIKey == "" {
+				return fmt.Errorf("GOOGLE_MAPS_API_KEY is required when MAPS_PROVIDER is 'google_maps'")
+			}
+		case "mapbox":
+			if c.Courier.MapboxAPIKey == "" {
+				return fmt.Errorf("MAPBOX_API_KEY is required when MAPS_PROVIDER is 'mapbox'")
+			}
+		default:
+			return fmt.Errorf("unsupported MAPS_PROVIDER: %s", c.Courier.MapsProvider)
+		}
+
+		switch c.Courier.SMSProvider {
+		case "mock", "":
+		case "twilio":
+			if c.Courier.TwilioAccountSID == "" || c.Courier.TwilioAuthToken == "" || c.Courier.TwilioFromNumber == "" {
+				return fmt.Errorf("TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER are required when SMS_PROVIDER is 'twilio'")
+			}
+		default:
+			return fmt.Errorf("unsupported SMS_PROVIDER: %s", c.Courier.SMSProvider)
+		}
+
+		switch c.Courier.PushProvider {
+		case "mock", "":
+		case "firebase":
+			if c.Courier.FirebaseServerKey == "" {
+				return fmt.Errorf("FIREBASE_SERVER_KEY is required when PUSH_PROVIDER is 'firebase'")
+			}
+		default:
+			return fmt.Errorf("unsupported PUSH_PROVIDER: %s", c.Courier.PushProvider)
+		}
+	}
+
 	return nil
 }
 
@@ -295,6 +379,16 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		}
+	}
+	return defaultVal
+}
+
+// getEnvFloat retrieves an environment variable as a float64 or returns a default value
+func getEnvFloat(key string, defaultVal float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatVal
 		}
 	}
 	return defaultVal

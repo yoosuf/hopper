@@ -11,10 +11,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
-
 	httpSwagger "github.com/swaggo/http-swagger"
-	_ "github.com/yoosuf/hopper/docs"
 
+	_ "github.com/yoosuf/hopper/docs"
 	"github.com/yoosuf/hopper/internal/auth"
 	"github.com/yoosuf/hopper/internal/delivery"
 	"github.com/yoosuf/hopper/internal/menus"
@@ -114,9 +113,40 @@ func main() {
 	restaurantService := restaurants.New(restaurantRepo)
 	menuService := menus.New(menuRepo)
 	orderService := orders.New(orderRepo)
-	deliveryService := delivery.New(deliveryRepo)
 	paymentService := payments.New(paymentRepo)
-	notificationService := notifications.New(notificationRepo, nil, log)
+	notificationSender := notifications.NewProviderSender(
+		cfg.Courier.ProviderIntegrationsEnabled,
+		cfg.Courier.SMSProvider,
+		cfg.Courier.PushProvider,
+		cfg.Courier.TwilioAccountSID,
+		cfg.Courier.TwilioAuthToken,
+		cfg.Courier.TwilioFromNumber,
+		cfg.Courier.FirebaseServerKey,
+		cfg.Courier.FirebaseEndpoint,
+		log,
+	)
+	notificationService := notifications.New(notificationRepo, notificationSender, log)
+	deliveryFlags := delivery.FeatureFlags{
+		AutoDispatchEnabled:         cfg.Courier.AutoDispatchEnabled,
+		RouteOptimizationEnabled:    cfg.Courier.RouteOptimizationEnabled,
+		LiveTrackingEnabled:         cfg.Courier.LiveTrackingEnabled,
+		AutoReassignEnabled:         cfg.Courier.AutoReassignEnabled,
+		SLAMonitoringEnabled:        cfg.Courier.SLAMonitoringEnabled,
+		ProviderIntegrationsEnabled: cfg.Courier.ProviderIntegrationsEnabled,
+		DispatchRadiusKM:            cfg.Courier.DispatchRadiusKM,
+		ReassignTimeout:             cfg.Courier.ReassignTimeout,
+		SLAThreshold:                cfg.Courier.SLAThreshold,
+		AverageSpeedKPH:             cfg.Courier.AverageSpeedKPH,
+	}
+	mapsProvider := delivery.NewMapsProviderFromName(
+		cfg.Courier.MapsProvider,
+		cfg.Courier.GoogleMapsAPIKey,
+		cfg.Courier.MapboxAPIKey,
+		cfg.Courier.AverageSpeedKPH,
+	)
+	alertingProvider := delivery.NewLogAlertingProvider(log)
+	courierNotifier := delivery.NewNotificationAdapter(notificationService)
+	deliveryService := delivery.New(deliveryRepo, deliveryFlags, log, mapsProvider, alertingProvider, courierNotifier)
 	reviewService := reviews.New(reviewRepo)
 	promotionService := promotions.New(promotionRepo)
 	supportService := support.New(supportRepo)
@@ -220,6 +250,16 @@ func main() {
 		// Delivery routes
 		r.Get("/deliveries/{id}", deliveryHandler.GetDelivery)
 		r.Put("/deliveries/{id}/status", deliveryHandler.UpdateDeliveryStatus)
+
+		r.Group(func(dr chi.Router) {
+			dr.Use(middleware.RequireRole("admin", "system"))
+			dr.Post("/deliveries/{id}/auto-dispatch", deliveryHandler.AutoDispatch)
+		})
+
+		r.Group(func(cr chi.Router) {
+			cr.Use(middleware.RequireRole("courier"))
+			cr.Put("/courier/location", deliveryHandler.UpdateCourierLocation)
+		})
 
 		// Payment routes
 		r.Get("/payments/{id}", paymentHandler.GetPayment)
