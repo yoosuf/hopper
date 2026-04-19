@@ -5,39 +5,37 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 
-	_ "github.com/crewdigital/hopper/docs"
 	httpSwagger "github.com/swaggo/http-swagger"
+	_ "github.com/yoosuf/hopper/docs"
 
-	"github.com/crewdigital/hopper/internal/admin"
-	"github.com/crewdigital/hopper/internal/audit"
-	"github.com/crewdigital/hopper/internal/auth"
-	"github.com/crewdigital/hopper/internal/delivery"
-	"github.com/crewdigital/hopper/internal/jobs"
-	"github.com/crewdigital/hopper/internal/menus"
-	"github.com/crewdigital/hopper/internal/notifications"
-	"github.com/crewdigital/hopper/internal/orders"
-	"github.com/crewdigital/hopper/internal/payments"
-	"github.com/crewdigital/hopper/internal/platform/config"
-	"github.com/crewdigital/hopper/internal/platform/db"
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/idempotency"
-	"github.com/crewdigital/hopper/internal/platform/logger"
-	"github.com/crewdigital/hopper/internal/platform/metrics"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
-	"github.com/crewdigital/hopper/internal/promotions"
-	"github.com/crewdigital/hopper/internal/regions"
-	"github.com/crewdigital/hopper/internal/restaurants"
-	"github.com/crewdigital/hopper/internal/reviews"
-	"github.com/crewdigital/hopper/internal/support"
-	"github.com/crewdigital/hopper/internal/tax"
-	"github.com/crewdigital/hopper/internal/users"
+	"github.com/yoosuf/hopper/internal/auth"
+	"github.com/yoosuf/hopper/internal/delivery"
+	"github.com/yoosuf/hopper/internal/menus"
+	"github.com/yoosuf/hopper/internal/notifications"
+	"github.com/yoosuf/hopper/internal/orders"
+	"github.com/yoosuf/hopper/internal/payments"
+	"github.com/yoosuf/hopper/internal/platform/cache"
+	"github.com/yoosuf/hopper/internal/platform/config"
+	"github.com/yoosuf/hopper/internal/platform/db"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/logger"
+	"github.com/yoosuf/hopper/internal/platform/metrics"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
+	"github.com/yoosuf/hopper/internal/promotions"
+	"github.com/yoosuf/hopper/internal/regions"
+	"github.com/yoosuf/hopper/internal/restaurants"
+	"github.com/yoosuf/hopper/internal/reviews"
+	"github.com/yoosuf/hopper/internal/support"
+	"github.com/yoosuf/hopper/internal/tax"
+	"github.com/yoosuf/hopper/internal/users"
 )
 
 // @title           Uber Eats Clone API
@@ -85,8 +83,13 @@ func main() {
 	// Initialize metrics
 	metrics := metrics.New(cfg.Metrics.Enabled, cfg.Metrics.Port)
 
-	// Initialize job queue
-	jobQueue := make(chan interface{}, 100)
+	// Initialize cache
+	appCache, err := cache.New(cfg, log)
+	if err != nil {
+		log.Error("Failed to initialize cache", logger.F("error", err))
+		panic(err)
+	}
+	defer appCache.(interface{ Close() error }).Close()
 
 	// Initialize repositories
 	authRepo := auth.NewRepository(dbPool.Pool)
@@ -102,9 +105,6 @@ func main() {
 	reviewRepo := reviews.NewRepository(dbPool.Pool)
 	promotionRepo := promotions.NewRepository(dbPool.Pool)
 	supportRepo := support.NewRepository(dbPool.Pool)
-	adminRepo := admin.NewRepository(dbPool.Pool)
-	auditRepo := audit.NewRepository(dbPool.Pool)
-	idempotencyRepo := idempotency.NewRepository(dbPool.Pool)
 
 	// Initialize services
 	authService := auth.New(authRepo, cfg.JWT.Secret, cfg.JWT.AccessTokenTTL, cfg.JWT.RefreshTokenTTL)
@@ -116,14 +116,10 @@ func main() {
 	orderService := orders.New(orderRepo)
 	deliveryService := delivery.New(deliveryRepo)
 	paymentService := payments.New(paymentRepo)
-	notificationService := notifications.New(notificationRepo, nil)
+	notificationService := notifications.New(notificationRepo, nil, log)
 	reviewService := reviews.New(reviewRepo)
 	promotionService := promotions.New(promotionRepo)
 	supportService := support.New(supportRepo)
-	_ = admin.New(adminRepo)
-	_ = jobs.New(jobQueue)
-	_ = audit.New(auditRepo)
-	_ = idempotency.New(idempotencyRepo, 24*time.Hour)
 
 	// Initialize handlers
 	authHandler := auth.NewHandler(authService, validator)
@@ -145,13 +141,36 @@ func main() {
 
 	// CORS middleware
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedOrigins:   cfg.CORS.AllowedOrigins,
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
-		MaxAge:           300,
+		MaxAge:           cfg.CORS.MaxAge,
 	}))
+
+	// Rate limiting middleware
+	if cfg.RateLimit.Enabled {
+		if cfg.Redis.Enabled {
+			// Use distributed rate limiting with cache
+			router.Use(middleware.DistributedRateLimit(appCache, cfg.RateLimit.RequestsPerMinute, log))
+		} else {
+			// Use in-memory rate limiting
+			router.Use(middleware.RateLimit(cfg.RateLimit.RequestsPerMinute))
+		}
+	}
+
+	// Security headers middleware
+	router.Use(middleware.SecurityHeaders)
+
+	// CSRF protection middleware (disabled by default, enable with REDIS_ENABLED=true)
+	if cfg.Redis.Enabled {
+		router.Use(middleware.CSRFMiddleware(cfg.JWT.Secret))
+		router.Use(middleware.ValidateCSRFOrigin(cfg.CORS.AllowedOrigins))
+	}
+
+	// Request size limiting middleware (10MB)
+	router.Use(middleware.MaxBodySize(10 << 20))
 
 	// Logging middleware
 	router.Use(middleware.Logging(log))
@@ -256,7 +275,7 @@ func main() {
 
 	// Start server
 	server := &http.Server{
-		Addr:         ":" + string(rune(cfg.Server.Port)),
+		Addr:         ":" + strconv.Itoa(cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -265,7 +284,7 @@ func main() {
 
 	// Graceful shutdown
 	go func() {
-		log.Info("Server starting on port " + string(rune(cfg.Server.Port)))
+		log.Info("Server starting on port " + strconv.Itoa(cfg.Server.Port))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("Server failed to start", logger.F("error", err))
 			panic(err)

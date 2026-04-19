@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Repository defines the interface for payment data access
 type Repository interface {
 	Create(ctx context.Context, payment *Payment) error
+	CreateWithTransaction(ctx context.Context, tx pgx.Tx, payment *Payment) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Payment, error)
 	ListByOrder(ctx context.Context, orderID uuid.UUID) ([]*Payment, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, providerID *string) error
@@ -33,6 +35,26 @@ func (r *RepositoryImpl) Create(ctx context.Context, payment *Payment) error {
 	`
 
 	_, err := r.db.Exec(ctx, query,
+		payment.ID,
+		payment.OrderID,
+		payment.Amount,
+		payment.CurrencyCode,
+		payment.Status,
+		payment.PaymentMethod,
+		payment.PaymentProviderID,
+	)
+
+	return err
+}
+
+// CreateWithTransaction creates a new payment within an existing transaction
+func (r *RepositoryImpl) CreateWithTransaction(ctx context.Context, tx pgx.Tx, payment *Payment) error {
+	query := `
+		INSERT INTO payments (id, order_id, amount, currency_code, status, payment_method, payment_provider_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() AT TIME ZONE 'UTC', NOW() AT TIME ZONE 'UTC')
+	`
+
+	_, err := tx.Exec(ctx, query,
 		payment.ID,
 		payment.OrderID,
 		payment.Amount,

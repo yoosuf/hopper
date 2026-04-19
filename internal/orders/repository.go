@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,9 +11,11 @@ import (
 // Repository defines the interface for order data access
 type Repository interface {
 	Create(ctx context.Context, order *Order) error
+	CreateWithItems(ctx context.Context, order *Order, items []*OrderItem) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Order, error)
-	ListByCustomer(ctx context.Context, customerID uuid.UUID) ([]*Order, error)
-	ListByRestaurant(ctx context.Context, restaurantID uuid.UUID) ([]*Order, error)
+	ListByCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]*Order, error)
+	ListByCustomerWithItems(ctx context.Context, customerID uuid.UUID, limit, offset int) (map[uuid.UUID][]*OrderItem, []*Order, error)
+	ListByRestaurant(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*Order, error)
 	UpdateWorkflowState(ctx context.Context, id uuid.UUID, state string) error
 	GetRestaurantRegion(ctx context.Context, restaurantID uuid.UUID) (uuid.UUID, error)
 	GetRestaurantStatus(ctx context.Context, restaurantID uuid.UUID) (isActive bool, isApproved bool, currencyCode string, err error)
@@ -35,8 +38,8 @@ func NewRepository(db *pgxpool.Pool) *RepositoryImpl {
 // Create creates a new order
 func (r *RepositoryImpl) Create(ctx context.Context, order *Order) error {
 	query := `
-		INSERT INTO orders (id, customer_id, restaurant_id, region_id, delivery_address_id, workflow_state, subtotal, delivery_fee, tax, total, currency_code, scheduled_for, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		INSERT INTO orders (id, customer_id, restaurant_id, region_id, delivery_address_id, workflow_state, subtotal, delivery_fee, tax, total, currency_code, scheduled_for, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	`
 
 	_, err := r.db.Exec(ctx, query,
@@ -53,10 +56,66 @@ func (r *RepositoryImpl) Create(ctx context.Context, order *Order) error {
 		order.CurrencyCode,
 		order.ScheduledFor,
 		order.CreatedAt,
-		order.CreatedAt,
 	)
 
 	return err
+}
+
+// CreateWithItems creates a new order with its items in a transaction
+func (r *RepositoryImpl) CreateWithItems(ctx context.Context, order *Order, items []*OrderItem) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Insert order
+	orderQuery := `
+		INSERT INTO orders (id, customer_id, restaurant_id, region_id, delivery_address_id, workflow_state, subtotal, delivery_fee, tax, total, currency_code, scheduled_for, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`
+	_, err = tx.Exec(ctx, orderQuery,
+		order.ID,
+		order.CustomerID,
+		order.RestaurantID,
+		order.RegionID,
+		order.DeliveryAddressID,
+		order.WorkflowState,
+		order.Subtotal,
+		order.DeliveryFee,
+		order.Tax,
+		order.Total,
+		order.CurrencyCode,
+		order.ScheduledFor,
+		order.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create order: %w", err)
+	}
+
+	// Insert order items
+	for _, item := range items {
+		itemQuery := `
+			INSERT INTO order_items (id, order_id, menu_item_id, quantity, unit_price)
+			VALUES ($1, $2, $3, $4, $5)
+		`
+		_, err = tx.Exec(ctx, itemQuery,
+			item.ID,
+			order.ID,
+			item.MenuItemID,
+			item.Quantity,
+			item.UnitPrice,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create order item: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetByID retrieves an order by ID
@@ -91,16 +150,28 @@ func (r *RepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*Order, err
 	return &order, nil
 }
 
-// ListByCustomer lists orders for a customer
-func (r *RepositoryImpl) ListByCustomer(ctx context.Context, customerID uuid.UUID) ([]*Order, error) {
+// ListByCustomer lists orders for a customer with pagination
+func (r *RepositoryImpl) ListByCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]*Order, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 		SELECT id, customer_id, restaurant_id, region_id, delivery_address_id, workflow_state, subtotal, delivery_fee, tax, total, currency_code, scheduled_for, created_at
 		FROM orders
 		WHERE customer_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, customerID)
+	rows, err := r.db.Query(ctx, query, customerID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -133,16 +204,123 @@ func (r *RepositoryImpl) ListByCustomer(ctx context.Context, customerID uuid.UUI
 	return orders, nil
 }
 
-// ListByRestaurant lists orders for a restaurant
-func (r *RepositoryImpl) ListByRestaurant(ctx context.Context, restaurantID uuid.UUID) ([]*Order, error) {
+// ListByCustomerWithItems lists orders for a customer with items in a single query to fix N+1 problem
+func (r *RepositoryImpl) ListByCustomerWithItems(ctx context.Context, customerID uuid.UUID, limit, offset int) (map[uuid.UUID][]*OrderItem, []*Order, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	query := `
+		SELECT o.id, o.customer_id, o.restaurant_id, o.region_id, o.delivery_address_id, o.workflow_state, 
+		       o.subtotal, o.delivery_fee, o.tax, o.total, o.currency_code, o.scheduled_for, o.created_at,
+		       oi.id as item_id, oi.order_id as item_order_id, oi.menu_item_id, oi.quantity, oi.unit_price
+		FROM orders o
+		LEFT JOIN order_items oi ON o.id = oi.order_id
+		WHERE o.customer_id = $1 AND o.deleted_at IS NULL
+		ORDER BY o.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.db.Query(ctx, query, customerID, limit, offset)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	ordersMap := make(map[uuid.UUID]*Order)
+	itemsMap := make(map[uuid.UUID][]*OrderItem)
+
+	for rows.Next() {
+		var order Order
+		var itemID, itemOrderID, menuItemID uuid.UUID
+		var quantity, unitPrice int
+		var itemIDNull, itemOrderIDNull, menuItemIDNull bool
+
+		err := rows.Scan(
+			&order.ID,
+			&order.CustomerID,
+			&order.RestaurantID,
+			&order.RegionID,
+			&order.DeliveryAddressID,
+			&order.WorkflowState,
+			&order.Subtotal,
+			&order.DeliveryFee,
+			&order.Tax,
+			&order.Total,
+			&order.CurrencyCode,
+			&order.ScheduledFor,
+			&order.CreatedAt,
+			&itemID,
+			&itemOrderID,
+			&menuItemID,
+			&quantity,
+			&unitPrice,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Check if item fields are NULL (no items for this order)
+		itemIDNull = itemID == uuid.Nil
+		itemOrderIDNull = itemOrderID == uuid.Nil
+		menuItemIDNull = menuItemID == uuid.Nil
+
+		// Store order if not already in map
+		if _, exists := ordersMap[order.ID]; !exists {
+			ordersMap[order.ID] = &order
+		}
+
+		// Add item if it exists
+		if !itemIDNull && !itemOrderIDNull && !menuItemIDNull {
+			item := &OrderItem{
+				ID:         itemID,
+				OrderID:    itemOrderID,
+				MenuItemID: menuItemID,
+				Quantity:   quantity,
+				UnitPrice:  unitPrice,
+			}
+			itemsMap[order.ID] = append(itemsMap[order.ID], item)
+		}
+	}
+
+	// Convert orders map to slice
+	orders := make([]*Order, 0, len(ordersMap))
+	for _, order := range ordersMap {
+		orders = append(orders, order)
+	}
+
+	return itemsMap, orders, nil
+}
+
+// ListByRestaurant lists orders for a restaurant with pagination
+func (r *RepositoryImpl) ListByRestaurant(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*Order, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 		SELECT id, customer_id, restaurant_id, region_id, delivery_address_id, workflow_state, subtotal, delivery_fee, tax, total, currency_code, scheduled_for, created_at
 		FROM orders
 		WHERE restaurant_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, restaurantID)
+	rows, err := r.db.Query(ctx, query, restaurantID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

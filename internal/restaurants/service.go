@@ -105,14 +105,14 @@ func (s *Service) GetRestaurant(ctx context.Context, id uuid.UUID) (*Restaurant,
 	return s.repo.GetByID(ctx, id)
 }
 
-// ListRestaurants lists restaurants for a region
-func (s *Service) ListRestaurants(ctx context.Context, regionID uuid.UUID) ([]*Restaurant, error) {
-	return s.repo.ListByRegion(ctx, regionID)
+// ListRestaurantsInRegion lists restaurants in a region with pagination
+func (s *Service) ListRestaurantsInRegion(ctx context.Context, regionID uuid.UUID, limit, offset int) ([]*Restaurant, error) {
+	return s.repo.ListByRegion(ctx, regionID, limit, offset)
 }
 
-// ListMyRestaurants lists restaurants owned by a user
-func (s *Service) ListMyRestaurants(ctx context.Context, ownerID uuid.UUID) ([]*Restaurant, error) {
-	return s.repo.ListByOwner(ctx, ownerID)
+// ListOwnerRestaurants lists restaurants owned by a user with pagination
+func (s *Service) ListOwnerRestaurants(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*Restaurant, error) {
+	return s.repo.ListByOwner(ctx, ownerID, limit, offset)
 }
 
 // UpdateRestaurant updates a restaurant

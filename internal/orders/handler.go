@@ -3,10 +3,12 @@ package orders
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
+	"github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 	"github.com/google/uuid"
 )
 
@@ -87,9 +89,22 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	customerIDStr := middleware.GetUserID(r.Context())
+	customerID, err := uuid.Parse(customerIDStr)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer ID", nil)
+		return
+	}
+
 	order, err := h.orderService.GetOrder(r.Context(), orderID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get order", nil)
+		return
+	}
+
+	// Authorization check: verify user owns the order
+	if order.CustomerID != customerID {
+		httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Order does not belong to customer", nil)
 		return
 	}
 
@@ -115,7 +130,21 @@ func (h *Handler) ListCustomerOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.orderService.ListCustomerOrders(r.Context(), customerID)
+	// Extract pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	orders, err := h.orderService.ListCustomerOrders(r.Context(), customerID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list orders", nil)
 		return
@@ -146,7 +175,21 @@ func (h *Handler) ListRestaurantOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := h.orderService.ListRestaurantOrders(r.Context(), restaurantID)
+	// Extract pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	orders, err := h.orderService.ListRestaurantOrders(r.Context(), restaurantID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list orders", nil)
 		return
@@ -187,8 +230,8 @@ func (h *Handler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.orderService.CancelOrder(r.Context(), orderID, customerID)
 	if err != nil {
-		if err.Error() == "order does not belong to customer" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Order does not belong to customer", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to cancel order", nil)
@@ -196,7 +239,4 @@ func (h *Handler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-	httpx.WriteSuccess(w, http.StatusOK, map[string]interface{}{
-		"message": "Order cancelled successfully",
-	})
 }

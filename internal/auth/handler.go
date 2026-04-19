@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/validator"
+	apperrors "github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 )
 
 // RegisterRequest represents a registration request
 type RegisterRequest struct {
 	Email     string `json:"email" validate:"required,email"`
-	Password  string `json:"password" validate:"required,min=8"`
+	Password  string `json:"password" validate:"required,min=8,containsany=ABCDEFGHIJKLMNOPQRSTUVWXYZ,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=!@#$%^&*"`
 	Role      string `json:"role" validate:"required,oneof=customer restaurant_owner courier"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
@@ -73,8 +74,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.authService.Register(r.Context(), req.Email, req.Password, req.Role, req.FirstName, req.LastName)
 	if err != nil {
-		if err.Error() == "email already exists" {
-			httpx.WriteError(w, http.StatusConflict, "EMAIL_EXISTS", "Email already exists", nil)
+		if appErr, ok := err.(*apperrors.AppError); ok && appErr.Code == apperrors.ErrCodeConflict {
+			httpx.WriteError(w, http.StatusConflict, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to register user", nil)

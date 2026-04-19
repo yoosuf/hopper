@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/crewdigital/hopper/internal/platform/config"
+	"github.com/yoosuf/hopper/internal/platform/config"
 )
 
 // LogLevel represents the severity of a log message
@@ -123,7 +124,7 @@ func (l *loggerImpl) log(level LogLevel, msg string, fields ...Field) {
 	copy(allFields[len(l.fields):], fields)
 
 	timestamp := time.Now().UTC()
-	
+
 	if l.format == "json" {
 		l.logJSON(level, timestamp, msg, allFields)
 	} else {
@@ -187,5 +188,10 @@ func isSensitive(s string) bool {
 
 // contains checks if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr))
+	if len(s) < len(substr) {
+		return false
+	}
+	sLower := strings.ToLower(s)
+	substrLower := strings.ToLower(substr)
+	return strings.Contains(sLower, substrLower)
 }

@@ -3,8 +3,8 @@ package admin
 import (
 	"net/http"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
 	"github.com/google/uuid"
 )
 

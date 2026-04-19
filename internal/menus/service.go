@@ -19,36 +19,36 @@ func New(repo Repository) *Service {
 
 // MenuItem represents a menu item
 type MenuItem struct {
-	ID             uuid.UUID
-	RestaurantID   uuid.UUID
-	Name           string
-	Description    string
-	Category       string
-	BasePrice      int
+	ID            uuid.UUID
+	RestaurantID  uuid.UUID
+	Name          string
+	Description   string
+	Category      string
+	BasePrice     int
 	TaxCategoryID uuid.UUID
-	IsActive       bool
+	IsActive      bool
 }
 
 // CreateMenuItemRequest represents a create menu item request
 type CreateMenuItemRequest struct {
-	Name           string
-	Description    string
-	Category       string
-	BasePrice      int
+	Name          string
+	Description   string
+	Category      string
+	BasePrice     int
 	TaxCategoryID uuid.UUID
 }
 
 // CreateMenuItem creates a new menu item
 func (s *Service) CreateMenuItem(ctx context.Context, restaurantID uuid.UUID, req *CreateMenuItemRequest) (*MenuItem, error) {
 	menuItem := &MenuItem{
-		ID:             uuid.New(),
-		RestaurantID:   restaurantID,
-		Name:           req.Name,
-		Description:    req.Description,
-		Category:       req.Category,
-		BasePrice:      req.BasePrice,
+		ID:            uuid.New(),
+		RestaurantID:  restaurantID,
+		Name:          req.Name,
+		Description:   req.Description,
+		Category:      req.Category,
+		BasePrice:     req.BasePrice,
 		TaxCategoryID: req.TaxCategoryID,
-		IsActive:       true,
+		IsActive:      true,
 	}
 
 	if err := s.repo.Create(ctx, menuItem); err != nil {
@@ -63,9 +63,9 @@ func (s *Service) GetMenuItem(ctx context.Context, id uuid.UUID) (*MenuItem, err
 	return s.repo.GetByID(ctx, id)
 }
 
-// ListMenuItems lists menu items for a restaurant
-func (s *Service) ListMenuItems(ctx context.Context, restaurantID uuid.UUID) ([]*MenuItem, error) {
-	return s.repo.ListByRestaurant(ctx, restaurantID)
+// ListMenuItems lists menu items for a restaurant with pagination
+func (s *Service) ListMenuItems(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*MenuItem, error) {
+	return s.repo.ListByRestaurant(ctx, restaurantID, limit, offset)
 }
 
 // UpdateMenuItem updates a menu item

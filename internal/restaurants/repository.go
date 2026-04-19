@@ -2,6 +2,7 @@ package restaurants
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,8 +13,8 @@ import (
 type Repository interface {
 	Create(ctx context.Context, restaurant *Restaurant) error
 	GetByID(ctx context.Context, id uuid.UUID) (*Restaurant, error)
-	ListByRegion(ctx context.Context, regionID uuid.UUID) ([]*Restaurant, error)
-	ListByOwner(ctx context.Context, ownerID uuid.UUID) ([]*Restaurant, error)
+	ListByRegion(ctx context.Context, regionID uuid.UUID, limit, offset int) ([]*Restaurant, error)
+	ListByOwner(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*Restaurant, error)
 	Update(ctx context.Context, restaurant *Restaurant) error
 	DeleteHours(ctx context.Context, restaurantID uuid.UUID) error
 	CreateHour(ctx context.Context, hour *RestaurantHour) error
@@ -106,16 +107,28 @@ func (r *RepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*Restaurant
 	return &restaurant, nil
 }
 
-// ListByRegion lists restaurants in a region
-func (r *RepositoryImpl) ListByRegion(ctx context.Context, regionID uuid.UUID) ([]*Restaurant, error) {
+// ListByRegion lists restaurants in a region with pagination
+func (r *RepositoryImpl) ListByRegion(ctx context.Context, regionID uuid.UUID, limit, offset int) ([]*Restaurant, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 		SELECT id, owner_id, name, description, cuisine_type, street_address, city, state_or_province, postal_code, country_code, latitude, longitude, phone, email, region_id, currency_code, timezone, is_active, is_approved, approved_at
 		FROM restaurants
 		WHERE region_id = $1 AND is_active = true AND is_approved = true AND deleted_at IS NULL
 		ORDER BY name
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, regionID)
+	rows, err := r.db.Query(ctx, query, regionID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -155,16 +168,28 @@ func (r *RepositoryImpl) ListByRegion(ctx context.Context, regionID uuid.UUID) (
 	return restaurants, nil
 }
 
-// ListByOwner lists restaurants owned by a user
-func (r *RepositoryImpl) ListByOwner(ctx context.Context, ownerID uuid.UUID) ([]*Restaurant, error) {
+// ListByOwner lists restaurants owned by a user with pagination
+func (r *RepositoryImpl) ListByOwner(ctx context.Context, ownerID uuid.UUID, limit, offset int) ([]*Restaurant, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 		SELECT id, owner_id, name, description, cuisine_type, street_address, city, state_or_province, postal_code, country_code, latitude, longitude, phone, email, region_id, currency_code, timezone, is_active, is_approved, approved_at
 		FROM restaurants
 		WHERE owner_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, ownerID)
+	rows, err := r.db.Query(ctx, query, ownerID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -305,19 +330,19 @@ func (r *RepositoryImpl) Search(ctx context.Context, req *SearchRequest) ([]*Res
 	argIndex := 1
 
 	if req.RegionID != nil {
-		whereConditions = append(whereConditions, "region_id = $"+string(rune('0'+argIndex)))
+		whereConditions = append(whereConditions, "region_id = $"+strconv.Itoa(argIndex))
 		args = append(args, req.RegionID)
 		argIndex++
 	}
 
 	if req.CuisineType != nil {
-		whereConditions = append(whereConditions, "cuisine_type = $"+string(rune('0'+argIndex)))
+		whereConditions = append(whereConditions, "cuisine_type = $"+strconv.Itoa(argIndex))
 		args = append(args, req.CuisineType)
 		argIndex++
 	}
 
 	if req.SearchQuery != nil {
-		whereConditions = append(whereConditions, "(name ILIKE $"+string(rune('0'+argIndex))+" OR description ILIKE $"+string(rune('0'+argIndex))+")")
+		whereConditions = append(whereConditions, "(name ILIKE $"+strconv.Itoa(argIndex)+" OR description ILIKE $"+strconv.Itoa(argIndex+1)+")")
 		searchPattern := "%" + *req.SearchQuery + "%"
 		args = append(args, searchPattern, searchPattern)
 		argIndex += 2
@@ -345,7 +370,7 @@ func (r *RepositoryImpl) Search(ctx context.Context, req *SearchRequest) ([]*Res
 	}
 
 	// Add pagination
-	query := baseQuery + " " + sortClause + " LIMIT $" + string(rune('0'+argIndex)) + " OFFSET $" + string(rune('0'+argIndex+1))
+	query := baseQuery + " " + sortClause + " LIMIT $" + strconv.Itoa(argIndex) + " OFFSET $" + strconv.Itoa(argIndex+1)
 	args = append(args, req.Limit, req.Offset)
 
 	rows, err := r.db.Query(ctx, query, args...)

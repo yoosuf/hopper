@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 )
 
 // Handler handles review HTTP requests

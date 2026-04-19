@@ -6,10 +6,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/crewdigital/hopper/internal/platform/config"
-	"github.com/crewdigital/hopper/internal/platform/db"
-	"github.com/crewdigital/hopper/internal/platform/logger"
-	"github.com/crewdigital/hopper/internal/worker"
+	"github.com/yoosuf/hopper/internal/platform/config"
+	"github.com/yoosuf/hopper/internal/platform/db"
+	"github.com/yoosuf/hopper/internal/platform/logger"
+	"github.com/yoosuf/hopper/internal/worker"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	jobQueue := make(chan worker.Job, 100)
 
 	// Initialize worker service
-	workerService := worker.New(jobQueue)
+	workerService := worker.New(jobQueue, log, cfg.Worker.Concurrency)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

@@ -4,21 +4,31 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yoosuf/hopper/internal/platform/logger"
 )
 
 // Service handles worker operations
 type Service struct {
-	jobQueue chan Job
+	jobQueue   chan Job
+	logger     logger.Logger
+	workerPool chan struct{}
+	workers    int
 }
 
 // New creates a new worker service
-func New(jobQueue chan Job) *Service {
+func New(jobQueue chan Job, log logger.Logger, workers int) *Service {
+	if workers <= 0 {
+		workers = 5 // Default worker count
+	}
+
 	return &Service{
-		jobQueue: jobQueue,
+		jobQueue:   jobQueue,
+		logger:     log,
+		workerPool: make(chan struct{}, workers),
+		workers:    workers,
 	}
 }
 
@@ -58,13 +68,25 @@ type JobData struct {
 	NotificationData map[string]interface{}
 }
 
-// Start starts the worker
+// Start starts the worker pool
 func (s *Service) Start(ctx context.Context) {
-	log.Println("Worker started")
+	s.logger.Info("Worker pool started", logger.F("workers", s.workers))
+
+	// Start worker goroutines
+	for i := 0; i < s.workers; i++ {
+		go s.worker(ctx)
+	}
+
+	// Wait for context cancellation
+	<-ctx.Done()
+	s.logger.Info("Worker pool stopped")
+}
+
+// worker is a single worker goroutine that processes jobs
+func (s *Service) worker(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Worker stopped")
 			return
 		case job := <-s.jobQueue:
 			s.processJob(ctx, job)
@@ -74,7 +96,7 @@ func (s *Service) Start(ctx context.Context) {
 
 // processJob processes a single job
 func (s *Service) processJob(ctx context.Context, job Job) {
-	log.Printf("Processing job: %s (type: %s)", job.ID, job.Type)
+	s.logger.Info("Processing job", logger.F("job_id", job.ID), logger.F("job_type", job.Type))
 
 	var err error
 	switch JobType(job.Type) {
@@ -103,15 +125,14 @@ func (s *Service) processJob(ctx context.Context, job Job) {
 	case JobTypeNotificationSend:
 		err = s.handleNotificationSend(ctx, job)
 	default:
-		log.Printf("Unknown job type: %s", job.Type)
-		return
+		s.logger.Warn("Unknown job type", logger.F("job_type", job.Type))
 	}
 
 	if err != nil {
-		log.Printf("Error processing job %s: %v", job.ID, err)
+		s.logger.Error("Error processing job", logger.F("job_id", job.ID), logger.F("error", err))
 		s.handleJobError(ctx, job, err)
 	} else {
-		log.Printf("Successfully processed job: %s", job.ID)
+		s.logger.Info("Successfully processed job", logger.F("job_id", job.ID))
 	}
 }
 
@@ -124,18 +145,18 @@ func (s *Service) handleJobError(ctx context.Context, job Job, err error) {
 	if job.RetryCount < job.MaxRetries {
 		job.RetryCount++
 		retryDelay := time.Duration(job.RetryCount) * time.Second
-		log.Printf("Retrying job %s (attempt %d/%d) in %v", job.ID, job.RetryCount, job.MaxRetries, retryDelay)
+		s.logger.Info("Retrying job", logger.F("job_id", job.ID), logger.F("retry_count", job.RetryCount), logger.F("max_retries", job.MaxRetries), logger.F("retry_delay", retryDelay))
 
 		go func() {
 			time.Sleep(retryDelay)
 			select {
 			case s.jobQueue <- job:
 			case <-ctx.Done():
-				log.Printf("Retry cancelled for job %s", job.ID)
+				s.logger.Info("Retry cancelled for job", logger.F("job_id", job.ID))
 			}
 		}()
 	} else {
-		log.Printf("Job %s failed after %d retries", job.ID, job.MaxRetries)
+		s.logger.Error("Job failed after max retries", logger.F("job_id", job.ID), logger.F("max_retries", job.MaxRetries))
 		// TODO: Implement dead letter queue for failed jobs
 	}
 }
@@ -147,7 +168,7 @@ func (s *Service) handleOrderCreated(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order created job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order created job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send confirmation notification to customer
@@ -165,7 +186,7 @@ func (s *Service) handleOrderConfirmed(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order confirmed job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order confirmed job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -181,7 +202,7 @@ func (s *Service) handleOrderPreparing(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order preparing job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order preparing job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -197,7 +218,7 @@ func (s *Service) handleOrderReady(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order ready job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order ready job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -214,7 +235,7 @@ func (s *Service) handleOrderPickedUp(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order picked up job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order picked up job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -231,7 +252,7 @@ func (s *Service) handleOrderDelivered(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order delivered job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order delivered job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -249,7 +270,7 @@ func (s *Service) handleOrderCancelled(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Order cancelled job: OrderID=%v", data.OrderID)
+	s.logger.Info("Order cancelled job", logger.F("order_id", data.OrderID))
 
 	// TODO:
 	// - Send notification to customer
@@ -267,7 +288,7 @@ func (s *Service) handlePaymentReceived(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Payment received job: PaymentID=%v", data.PaymentID)
+	s.logger.Info("Payment received job", logger.F("payment_id", data.PaymentID))
 
 	// TODO:
 	// - Update payment status
@@ -284,7 +305,7 @@ func (s *Service) handlePaymentFailed(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Payment failed job: PaymentID=%v", data.PaymentID)
+	s.logger.Warn("Payment failed job", logger.F("payment_id", data.PaymentID))
 
 	// TODO:
 	// - Update payment status
@@ -301,7 +322,7 @@ func (s *Service) handleDeliveryAssigned(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Delivery assigned job: DeliveryID=%v", data.DeliveryID)
+	s.logger.Info("Delivery assigned job", logger.F("delivery_id", data.DeliveryID))
 
 	// TODO:
 	// - Notify courier
@@ -318,7 +339,7 @@ func (s *Service) handleDeliveryCompleted(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Delivery completed job: DeliveryID=%v", data.DeliveryID)
+	s.logger.Info("Delivery completed job", logger.F("delivery_id", data.DeliveryID))
 
 	// TODO:
 	// - Update delivery status
@@ -335,7 +356,7 @@ func (s *Service) handleNotificationSend(ctx context.Context, job Job) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	log.Printf("Notification send job: UserID=%v", data.UserID)
+	s.logger.Info("Notification send job", logger.F("user_id", data.UserID))
 
 	// TODO:
 	// - Send push notification

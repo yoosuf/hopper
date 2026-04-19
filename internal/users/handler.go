@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
+	"github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 	"github.com/google/uuid"
 )
 
@@ -201,8 +202,8 @@ func (h *Handler) UpdateAddress(w http.ResponseWriter, r *http.Request) {
 
 	address, err := h.userService.UpdateAddress(r.Context(), addressID, userID, &req)
 	if err != nil {
-		if err.Error() == "address does not belong to user" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Address does not belong to user", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update address", nil)
@@ -244,8 +245,8 @@ func (h *Handler) DeleteAddress(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.DeleteAddress(r.Context(), addressID, userID)
 	if err != nil {
-		if err.Error() == "address does not belong to user" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Address does not belong to user", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete address", nil)

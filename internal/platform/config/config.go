@@ -14,17 +14,18 @@ import (
 type Config struct {
 	Environment string
 
-	Server ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	CORS     CORSConfig
-	RateLimit RateLimitConfig
-	Worker   WorkerConfig
-	Logging  LoggingConfig
-	Metrics  MetricsConfig
-	SMTP     SMTPConfig
-	Payment  PaymentConfig
+	Server      ServerConfig
+	Database    DatabaseConfig
+	JWT         JWTConfig
+	CORS        CORSConfig
+	RateLimit   RateLimitConfig
+	Worker      WorkerConfig
+	Logging     LoggingConfig
+	Metrics     MetricsConfig
+	SMTP        SMTPConfig
+	Payment     PaymentConfig
 	Idempotency IdempotencyConfig
+	Redis       RedisConfig
 }
 
 // ServerConfig holds server configuration
@@ -48,9 +49,9 @@ type DatabaseConfig struct {
 
 // JWTConfig holds JWT configuration
 type JWTConfig struct {
-	Secret              string
-	AccessTokenTTL      time.Duration
-	RefreshTokenTTL     time.Duration
+	Secret          string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 // CORSConfig holds CORS configuration
@@ -63,27 +64,27 @@ type CORSConfig struct {
 
 // RateLimitConfig holds rate limiting configuration
 type RateLimitConfig struct {
-	Enabled               bool
-	RequestsPerMinute     int
-	Burst                 int
-	ByIP                  bool
-	ByUser                bool
+	Enabled           bool
+	RequestsPerMinute int
+	Burst             int
+	ByIP              bool
+	ByUser            bool
 }
 
 // WorkerConfig holds worker configuration
 type WorkerConfig struct {
-	Enabled             bool
-	PollInterval        time.Duration
-	BatchSize           int
-	MaxRetries          int
-	RetryBaseDelay      time.Duration
-	Concurrency         int
-	JobTimeout          time.Duration
-	OutboxWorkerEnabled bool
+	Enabled                         bool
+	PollInterval                    time.Duration
+	BatchSize                       int
+	MaxRetries                      int
+	RetryBaseDelay                  time.Duration
+	Concurrency                     int
+	JobTimeout                      time.Duration
+	OutboxWorkerEnabled             bool
 	ScheduledActivatorWorkerEnabled bool
-	NotificationWorkerEnabled bool
-	PaymentReconcilerWorkerEnabled bool
-	MaintenanceWorkerEnabled bool
+	NotificationWorkerEnabled       bool
+	PaymentReconcilerWorkerEnabled  bool
+	MaintenanceWorkerEnabled        bool
 }
 
 // LoggingConfig holds logging configuration
@@ -100,19 +101,19 @@ type MetricsConfig struct {
 
 // SMTPConfig holds SMTP configuration
 type SMTPConfig struct {
-	Host           string
-	Port           int
-	User           string
-	Password       string
-	From           string
-	SkipTLSVerify  bool
+	Host          string
+	Port          int
+	User          string
+	Password      string
+	From          string
+	SkipTLSVerify bool
 }
 
 // PaymentConfig holds payment provider configuration
 type PaymentConfig struct {
-	Provider             string
+	Provider            string
 	ProviderSecret      string
-	StripeAPIKey         string
+	StripeAPIKey        string
 	StripeWebhookSecret string
 }
 
@@ -120,6 +121,14 @@ type PaymentConfig struct {
 type IdempotencyConfig struct {
 	Enabled bool
 	TTL     time.Duration
+}
+
+// RedisConfig holds Redis configuration
+type RedisConfig struct {
+	Address  string
+	Password string
+	DB       int
+	Enabled  bool
 }
 
 // Load loads configuration from environment variables
@@ -168,18 +177,18 @@ func Load() (*Config, error) {
 			ByUser:            getEnvBool("RATE_LIMIT_BY_USER", true),
 		},
 		Worker: WorkerConfig{
-			Enabled:                           getEnvBool("WORKER_ENABLED", true),
-			PollInterval:                      getEnvDuration("WORKER_POLL_INTERVAL", 5*time.Second),
-			BatchSize:                         getEnvInt("WORKER_BATCH_SIZE", 100),
-			MaxRetries:                        getEnvInt("WORKER_MAX_RETRIES", 5),
-			RetryBaseDelay:                    getEnvDuration("WORKER_RETRY_BASE_DELAY", 1*time.Second),
-			Concurrency:                       getEnvInt("WORKER_CONCURRENCY", 10),
-			JobTimeout:                       getEnvDuration("WORKER_JOB_TIMEOUT", 30*time.Second),
-			OutboxWorkerEnabled:              getEnvBool("OUTBOX_WORKER_ENABLED", true),
-			ScheduledActivatorWorkerEnabled:  getEnvBool("SCHEDULED_ACTIVATOR_WORKER_ENABLED", true),
-			NotificationWorkerEnabled:        getEnvBool("NOTIFICATION_WORKER_ENABLED", true),
-			PaymentReconcilerWorkerEnabled:    getEnvBool("PAYMENT_RECONCILER_WORKER_ENABLED", true),
-			MaintenanceWorkerEnabled:         getEnvBool("MAINTENANCE_WORKER_ENABLED", true),
+			Enabled:                         getEnvBool("WORKER_ENABLED", true),
+			PollInterval:                    getEnvDuration("WORKER_POLL_INTERVAL", 5*time.Second),
+			BatchSize:                       getEnvInt("WORKER_BATCH_SIZE", 100),
+			MaxRetries:                      getEnvInt("WORKER_MAX_RETRIES", 5),
+			RetryBaseDelay:                  getEnvDuration("WORKER_RETRY_BASE_DELAY", 1*time.Second),
+			Concurrency:                     getEnvInt("WORKER_CONCURRENCY", 10),
+			JobTimeout:                      getEnvDuration("WORKER_JOB_TIMEOUT", 30*time.Second),
+			OutboxWorkerEnabled:             getEnvBool("OUTBOX_WORKER_ENABLED", true),
+			ScheduledActivatorWorkerEnabled: getEnvBool("SCHEDULED_ACTIVATOR_WORKER_ENABLED", true),
+			NotificationWorkerEnabled:       getEnvBool("NOTIFICATION_WORKER_ENABLED", true),
+			PaymentReconcilerWorkerEnabled:  getEnvBool("PAYMENT_RECONCILER_WORKER_ENABLED", true),
+			MaintenanceWorkerEnabled:        getEnvBool("MAINTENANCE_WORKER_ENABLED", true),
 		},
 		Logging: LoggingConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -198,14 +207,20 @@ func Load() (*Config, error) {
 			SkipTLSVerify: getEnvBool("SMTP_SKIP_TLS_VERIFY", false),
 		},
 		Payment: PaymentConfig{
-			Provider:             getEnv("PAYMENT_PROVIDER", "mock"),
+			Provider:            getEnv("PAYMENT_PROVIDER", "mock"),
 			ProviderSecret:      getEnv("PAYMENT_PROVIDER_SECRET", ""),
-			StripeAPIKey:         getEnv("STRIPE_API_KEY", ""),
+			StripeAPIKey:        getEnv("STRIPE_API_KEY", ""),
 			StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		},
 		Idempotency: IdempotencyConfig{
 			Enabled: getEnvBool("IDEMPOTENCY_ENABLED", true),
 			TTL:     getEnvDuration("IDEMPOTENCY_TTL", 24*time.Hour),
+		},
+		Redis: RedisConfig{
+			Address:  getEnv("REDIS_ADDRESS", "localhost:6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvInt("REDIS_DB", 0),
+			Enabled:  getEnvBool("REDIS_ENABLED", false),
 		},
 	}
 
@@ -228,6 +243,22 @@ func (c *Config) Validate() error {
 	if len(c.JWT.Secret) < 32 {
 		return fmt.Errorf("JWT_SECRET must be at least 32 characters")
 	}
+
+	// Validate SMTP configuration if SMTP is configured
+	if c.SMTP.Host != "" && c.SMTP.Password == "" {
+		return fmt.Errorf("SMTP_PASSWORD is required when SMTP_HOST is set")
+	}
+
+	// Validate payment provider configuration
+	if c.Payment.Provider != "mock" {
+		if c.Payment.ProviderSecret == "" {
+			return fmt.Errorf("PAYMENT_PROVIDER_SECRET is required when PAYMENT_PROVIDER is not 'mock'")
+		}
+		if c.Payment.Provider == "stripe" && c.Payment.StripeAPIKey == "" {
+			return fmt.Errorf("STRIPE_API_KEY is required when PAYMENT_PROVIDER is 'stripe'")
+		}
+	}
+
 	return nil
 }
 

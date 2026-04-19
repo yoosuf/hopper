@@ -3,11 +3,13 @@ package menus
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
 	"github.com/google/uuid"
+	"github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 )
 
 // Handler handles HTTP requests for menu operations
@@ -119,7 +121,21 @@ func (h *Handler) ListMenuItems(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	menuItems, err := h.menuService.ListMenuItems(r.Context(), restaurantID)
+	// Extract pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	menuItems, err := h.menuService.ListMenuItems(r.Context(), restaurantID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list menu items", nil)
 		return
@@ -173,8 +189,8 @@ func (h *Handler) UpdateMenuItem(w http.ResponseWriter, r *http.Request) {
 
 	menuItem, err := h.menuService.UpdateMenuItem(r.Context(), menuItemID, restaurantID, &req)
 	if err != nil {
-		if err.Error() == "menu item does not belong to restaurant" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Menu item does not belong to restaurant", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update menu item", nil)
@@ -216,8 +232,8 @@ func (h *Handler) DeleteMenuItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.menuService.DeleteMenuItem(r.Context(), menuItemID, restaurantID); err != nil {
-		if err.Error() == "menu item does not belong to restaurant" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Menu item does not belong to restaurant", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete menu item", nil)

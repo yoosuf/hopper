@@ -2,24 +2,27 @@ package jobs
 
 import (
 	"context"
-	"log"
+
+	"github.com/yoosuf/hopper/internal/platform/logger"
 )
 
 // Service handles job scheduling and management
 type Service struct {
 	workerJobQueue chan<- interface{}
+	logger         logger.Logger
 }
 
 // New creates a new jobs service
-func New(workerJobQueue chan<- interface{}) *Service {
+func New(workerJobQueue chan<- interface{}, log logger.Logger) *Service {
 	return &Service{
 		workerJobQueue: workerJobQueue,
+		logger:         log,
 	}
 }
 
 // EnqueueOrderJob enqueues an order-related job
 func (s *Service) EnqueueOrderJob(ctx context.Context, orderID string, jobType string) {
-	log.Printf("Enqueuing order job: %s (type: %s)", orderID, jobType)
+	s.logger.Info("Enqueuing order job", logger.F("order_id", orderID), logger.F("job_type", jobType))
 	job := map[string]interface{}{
 		"id":   orderID,
 		"type": jobType,
@@ -29,7 +32,7 @@ func (s *Service) EnqueueOrderJob(ctx context.Context, orderID string, jobType s
 
 // EnqueuePaymentJob enqueues a payment-related job
 func (s *Service) EnqueuePaymentJob(ctx context.Context, paymentID string, jobType string) {
-	log.Printf("Enqueuing payment job: %s (type: %s)", paymentID, jobType)
+	s.logger.Info("Enqueuing payment job", logger.F("payment_id", paymentID), logger.F("job_type", jobType))
 	job := map[string]interface{}{
 		"id":   paymentID,
 		"type": jobType,
@@ -39,7 +42,7 @@ func (s *Service) EnqueuePaymentJob(ctx context.Context, paymentID string, jobTy
 
 // EnqueueDeliveryJob enqueues a delivery-related job
 func (s *Service) EnqueueDeliveryJob(ctx context.Context, deliveryID string, jobType string) {
-	log.Printf("Enqueuing delivery job: %s (type: %s)", deliveryID, jobType)
+	s.logger.Info("Enqueuing delivery job", logger.F("delivery_id", deliveryID), logger.F("job_type", jobType))
 	job := map[string]interface{}{
 		"id":   deliveryID,
 		"type": jobType,

@@ -2,17 +2,19 @@ package audit
 
 import (
 	"context"
-	"log"
+
+	"github.com/yoosuf/hopper/internal/platform/logger"
 )
 
 // Service handles audit logging
 type Service struct {
-	repo Repository
+	repo   Repository
+	logger logger.Logger
 }
 
 // New creates a new audit service
-func New(repo Repository) *Service {
-	return &Service{repo: repo}
+func New(repo Repository, log logger.Logger) *Service {
+	return &Service{repo: repo, logger: log}
 }
 
 // LogAudit logs an audit event
@@ -26,7 +28,7 @@ func (s *Service) LogAudit(ctx context.Context, userID string, action string, re
 	}
 
 	if err := s.repo.Create(ctx, auditLog); err != nil {
-		log.Printf("Failed to log audit: %v", err)
+		s.logger.Error("Failed to log audit", logger.F("error", err))
 		return err
 	}
 

@@ -3,10 +3,12 @@ package restaurants
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
-	"github.com/crewdigital/hopper/internal/platform/validator"
+	apperrors "github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
+	"github.com/yoosuf/hopper/internal/platform/validator"
 	"github.com/google/uuid"
 )
 
@@ -117,7 +119,21 @@ func (h *Handler) ListRestaurants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	restaurants, err := h.restaurantService.ListRestaurants(r.Context(), regionID)
+	// Extract pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	restaurants, err := h.restaurantService.ListRestaurantsInRegion(r.Context(), regionID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list restaurants", nil)
 		return
@@ -145,7 +161,21 @@ func (h *Handler) ListMyRestaurants(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	restaurants, err := h.restaurantService.ListMyRestaurants(r.Context(), userID)
+	// Extract pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
+
+	restaurants, err := h.restaurantService.ListOwnerRestaurants(r.Context(), userID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list restaurants", nil)
 		return
@@ -198,8 +228,8 @@ func (h *Handler) UpdateRestaurant(w http.ResponseWriter, r *http.Request) {
 
 	restaurant, err := h.restaurantService.UpdateRestaurant(r.Context(), restaurantID, userID, &req)
 	if err != nil {
-		if err.Error() == "restaurant does not belong to owner" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Restaurant does not belong to owner", nil)
+		if appErr, ok := err.(*apperrors.AppError); ok && appErr.Code == apperrors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update restaurant", nil)

@@ -3,9 +3,10 @@ package notifications
 import (
 	"net/http"
 
-	"github.com/crewdigital/hopper/internal/platform/httpx"
-	"github.com/crewdigital/hopper/internal/platform/middleware"
 	"github.com/google/uuid"
+	"github.com/yoosuf/hopper/internal/platform/errors"
+	"github.com/yoosuf/hopper/internal/platform/httpx"
+	"github.com/yoosuf/hopper/internal/platform/middleware"
 )
 
 // Handler handles HTTP requests for notification operations
@@ -112,8 +113,8 @@ func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 
 	err = h.notificationService.MarkAsRead(r.Context(), notificationID, userID)
 	if err != nil {
-		if err.Error() == "notification does not belong to user" {
-			httpx.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Notification does not belong to user", nil)
+		if appErr, ok := err.(*errors.AppError); ok && appErr.Code == errors.ErrCodeForbidden {
+			httpx.WriteError(w, http.StatusForbidden, string(appErr.Code), appErr.Message, nil)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark notification as read", nil)

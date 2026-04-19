@@ -12,7 +12,7 @@ import (
 type Repository interface {
 	Create(ctx context.Context, menuItem *MenuItem) error
 	GetByID(ctx context.Context, id uuid.UUID) (*MenuItem, error)
-	ListByRestaurant(ctx context.Context, restaurantID uuid.UUID) ([]*MenuItem, error)
+	ListByRestaurant(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*MenuItem, error)
 	Update(ctx context.Context, menuItem *MenuItem) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -78,16 +78,28 @@ func (r *RepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*MenuItem, 
 	return &menuItem, nil
 }
 
-// ListByRestaurant lists menu items for a restaurant
-func (r *RepositoryImpl) ListByRestaurant(ctx context.Context, restaurantID uuid.UUID) ([]*MenuItem, error) {
+// ListByRestaurant lists menu items for a restaurant with pagination
+func (r *RepositoryImpl) ListByRestaurant(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*MenuItem, error) {
+	// Set default limit if not provided
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 		SELECT id, restaurant_id, name, description, category, base_price, tax_category_id, is_active
 		FROM menu_items
 		WHERE restaurant_id = $1 AND is_active = true AND deleted_at IS NULL
 		ORDER BY category, name
+		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.db.Query(ctx, query, restaurantID)
+	rows, err := r.db.Query(ctx, query, restaurantID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

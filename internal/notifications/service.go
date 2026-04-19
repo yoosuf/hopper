@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yoosuf/hopper/internal/platform/logger"
 )
 
 // NotificationChannel represents the delivery channel for a notification
@@ -65,11 +66,12 @@ type Sender interface {
 type Service struct {
 	repo   Repository
 	sender Sender
+	logger logger.Logger
 }
 
 // New creates a new notifications service
-func New(repo Repository, sender Sender) *Service {
-	return &Service{repo: repo, sender: sender}
+func New(repo Repository, sender Sender, log logger.Logger) *Service {
+	return &Service{repo: repo, sender: sender, logger: log}
 }
 
 // CreateNotification creates a new notification and sends it via configured channels
@@ -124,7 +126,7 @@ func (s *Service) sendNotifications(ctx context.Context, notification *Notificat
 			if s.sender != nil {
 				if err := s.sender.SendPush(ctx, notification.UserID, notification.Title, notification.Body, data); err != nil {
 					// Log error but don't fail the entire operation
-					fmt.Printf("Failed to send push notification: %v\n", err)
+					s.logger.Error("Failed to send push notification", logger.F("error", err))
 				}
 			}
 		case ChannelEmail:
@@ -132,7 +134,7 @@ func (s *Service) sendNotifications(ctx context.Context, notification *Notificat
 				// Get user email from repository or context
 				email := "user@example.com" // TODO: Get user email
 				if err := s.sender.SendEmail(ctx, email, notification.Title, notification.Body); err != nil {
-					fmt.Printf("Failed to send email notification: %v\n", err)
+					s.logger.Error("Failed to send email notification", logger.F("error", err))
 				}
 			}
 		case ChannelSMS:
@@ -140,7 +142,7 @@ func (s *Service) sendNotifications(ctx context.Context, notification *Notificat
 				// Get user phone from repository or context
 				phone := "+1234567890" // TODO: Get user phone
 				if err := s.sender.SendSMS(ctx, phone, notification.Body); err != nil {
-					fmt.Printf("Failed to send SMS notification: %v\n", err)
+					s.logger.Error("Failed to send SMS notification", logger.F("error", err))
 				}
 			}
 		}

@@ -5,9 +5,35 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crewdigital/hopper/internal/platform/config"
+	"github.com/yoosuf/hopper/internal/platform/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const defaultQueryTimeout = 5 * time.Second
+
+// WithQueryTimeout adds a timeout to the context for database operations
+func WithQueryTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, defaultQueryTimeout)
+}
+
+// WithQueryTimeoutCustom adds a custom timeout to the context for database operations
+func WithQueryTimeoutCustom(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, timeout)
+}
+
+// PoolMetrics returns connection pool metrics for monitoring
+func (p *Pool) PoolMetrics() map[string]interface{} {
+	stats := p.Stat()
+	return map[string]interface{}{
+		"total_connections":    stats.TotalConns(),
+		"idle_connections":     stats.IdleConns(),
+		"max_connections":      stats.MaxConns(),
+		"acquire_count":        stats.AcquireCount(),
+		"acquire_duration_ns":  stats.AcquireDuration().Nanoseconds(),
+		"empty_acquire_count":  stats.EmptyAcquireCount(),
+		"acquire_errors_count": stats.AcquireCount() - stats.EmptyAcquireCount(),
+	}
+}
 
 // Pool wraps pgxpool.Pool for database operations
 type Pool struct {

@@ -162,7 +162,10 @@ func (s *Service) Login(ctx context.Context, email, password string) (*TokenPair
 // RefreshToken refreshes an access token using a refresh token
 func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	// Hash the refresh token to look it up
-	tokenHash := hashToken(refreshToken)
+	tokenHash, err := hashToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash refresh token: %w", err)
+	}
 
 	// Get refresh token from database
 	rt, err := s.repo.GetRefreshToken(ctx, tokenHash)
@@ -214,7 +217,10 @@ func (s *Service) RefreshToken(ctx context.Context, refreshToken string) (*Token
 
 // Logout revokes a refresh token
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {
-	tokenHash := hashToken(refreshToken)
+	tokenHash, err := hashToken(refreshToken)
+	if err != nil {
+		return fmt.Errorf("failed to hash refresh token: %w", err)
+	}
 	return s.repo.RevokeRefreshToken(ctx, tokenHash)
 }
 
@@ -224,7 +230,7 @@ func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 }
 
 // ValidateAccessToken validates an access token and returns the claims
-func (s *Service) ValidateAccessToken(tokenString string) (*Claims, error) {
+func (s *Service) ValidateAccessToken(tokenString string) (interface{}, error) {
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -266,7 +272,10 @@ func (s *Service) generateAccessToken(user *User) (string, error) {
 func (s *Service) generateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 	token := uuid.New().String()
 	expiresAt := time.Now().Add(s.refreshTTL).UTC()
-	tokenHash := hashToken(token)
+	tokenHash, err := hashToken(token)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash refresh token: %w", err)
+	}
 
 	if err := s.repo.CreateRefreshToken(ctx, userID, tokenHash, expiresAt); err != nil {
 		return "", fmt.Errorf("failed to create refresh token: %w", err)
@@ -276,9 +285,12 @@ func (s *Service) generateRefreshToken(ctx context.Context, userID uuid.UUID) (s
 }
 
 // hashToken hashes a token for storage
-func hashToken(token string) string {
-	hash, _ := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
-	return string(hash)
+func hashToken(token string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash token: %w", err)
+	}
+	return string(hash), nil
 }
 
 // VerifyTokenHash verifies a token against its hash

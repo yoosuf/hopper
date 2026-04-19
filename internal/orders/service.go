@@ -176,14 +176,14 @@ func (s *Service) GetOrder(ctx context.Context, id uuid.UUID) (*Order, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
-// ListCustomerOrders lists orders for a customer
-func (s *Service) ListCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]*Order, error) {
-	return s.repo.ListByCustomer(ctx, customerID)
+// ListCustomerOrders lists orders for a customer with pagination
+func (s *Service) ListCustomerOrders(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]*Order, error) {
+	return s.repo.ListByCustomer(ctx, customerID, limit, offset)
 }
 
-// ListRestaurantOrders lists orders for a restaurant
-func (s *Service) ListRestaurantOrders(ctx context.Context, restaurantID uuid.UUID) ([]*Order, error) {
-	return s.repo.ListByRestaurant(ctx, restaurantID)
+// ListRestaurantOrders lists orders for a restaurant with pagination
+func (s *Service) ListRestaurantOrders(ctx context.Context, restaurantID uuid.UUID, limit, offset int) ([]*Order, error) {
+	return s.repo.ListByRestaurant(ctx, restaurantID, limit, offset)
 }
 
 // CancelOrder cancels an order
@@ -206,9 +206,9 @@ func (s *Service) CancelOrder(ctx context.Context, id uuid.UUID, customerID uuid
 	return s.repo.UpdateWorkflowState(ctx, id, string(WorkflowStateCancelled))
 }
 
-// GetOrderHistory retrieves order history for a customer
-func (s *Service) GetOrderHistory(ctx context.Context, customerID uuid.UUID) ([]*Order, error) {
-	return s.repo.ListByCustomer(ctx, customerID)
+// GetOrderHistory retrieves order history for a customer with pagination
+func (s *Service) GetOrderHistory(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]*Order, error) {
+	return s.repo.ListByCustomer(ctx, customerID, limit, offset)
 }
 
 // GetOrderHistoryStats retrieves order statistics for a customer
