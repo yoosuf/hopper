@@ -4,6 +4,32 @@
 
 This document describes the security posture, authentication, authorization, data protection, and compliance measures for the Food Delivery API Backend.
 
+## Recent Security Enhancements
+
+### CSRF Protection
+- CSRF middleware enabled when Redis is configured
+- Token-based CSRF validation for state-changing operations
+- Origin validation to prevent cross-site request forgery attacks
+- Configurable via `REDIS_ENABLED` environment variable
+
+### Distributed Rate Limiting
+- Cache-based rate limiting supporting both in-memory and Redis backends
+- Configurable request limits per minute per IP
+- Automatic fallback to in-memory rate limiting when Redis is unavailable
+- Distributed rate limiting enabled with Redis for multi-instance deployments
+
+### AppError Pattern
+- Consistent error handling across all services
+- Type-safe error codes and messages
+- Prevents fragile error string comparisons
+- Improved error tracking and debugging
+
+### Structured Logging
+- JSON-based structured logging for security event tracking
+- Configurable log levels (debug, info, warn, error)
+- Request ID correlation for audit trails
+- Sensitive data filtering in logs
+
 ## Password Hashing
 
 ### Algorithm

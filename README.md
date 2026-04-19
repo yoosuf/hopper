@@ -1,6 +1,6 @@
-# Hopper - Food Delivery API Backend
+# Hopper - ⚡ Production-Grade Food Delivery Platform
 
-A production-grade, multi-region food delivery API backend built with Go and PostgreSQL.
+A blazing fast, production-ready multi-region food delivery platform built with Go 1.25+, PostgreSQL 16+, and modern architecture patterns. Scale from MVP to millions of orders with enterprise-grade reliability, security, and performance.
 
 ## Features
 
@@ -8,8 +8,11 @@ A production-grade, multi-region food delivery API backend built with Go and Pos
 - **Tax-Aware Pricing**: Automatic tax calculation based on regional tax zones and categories
 - **Role-Based Access Control**: Customer, restaurant owner, courier, and admin roles with scoped permissions
 - **Workflow State Management**: Order and delivery lifecycle management with state transitions
-- **Background Workers**: Asynchronous job processing for notifications and background tasks
-- **Audit Logging**: Complete audit trail for all critical operations
+- **Background Workers**: Asynchronous job processing with worker pool for concurrent task execution
+- **Audit Logging**: Complete audit trail for all critical operations with structured logging
+- **Security Features**: CSRF protection, distributed rate limiting, AppError pattern for consistent error handling
+- **Caching Layer**: In-memory cache with Redis support for distributed caching
+- **Structured Logging**: JSON-based structured logging with configurable log levels
 - **RESTful API**: Clean, well-documented REST API with OpenAPI specification
 - **Docker Support**: Containerized deployment with Docker and Docker Compose
 
@@ -46,14 +49,16 @@ hopper/
 │   ├── users/        # User management
 │   ├── worker/       # Background worker
 │   └── platform/     # Shared platform components
+│       ├── cache/    # Caching layer (in-memory with Redis support)
 │       ├── config/   # Configuration
 │       ├── db/       # Database connection
+│       ├── errors/   # Error handling with AppError pattern
+│       ├── health/   # Health check infrastructure
 │       ├── httpx/    # HTTP utilities
-│       ├── logger/   # Logging
+│       ├── logger/   # Structured logging
 │       ├── metrics/  # Metrics collection
-│       ├── middleware/# HTTP middleware
+│       ├── middleware/# HTTP middleware (CSRF, rate limiting, etc.)
 │       ├── validator/# Request validation
-│       ├── idempotency/# Idempotency
 │       └── clock/    # Time utilities
 ├── docs/             # Documentation
 ├── openapi/          # OpenAPI specification
@@ -77,7 +82,7 @@ hopper/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/crewdigital/hopper.git
+   git clone https://github.com/yoosuf/hopper.git
    cd hopper
    ```
 
@@ -207,6 +212,11 @@ The application is configured via environment variables:
 | `COURIER_AUTO_REASSIGN_ENABLED` | Enable auto-reassignment for timed-out assignments | `false` |
 | `COURIER_SLA_MONITORING_ENABLED` | Enable SLA delay monitoring and alerting | `false` |
 | `COURIER_PROVIDER_INTEGRATIONS_ENABLED` | Enable maps/SMS/push provider integrations | `false` |
+| `REDIS_ENABLED` | Enable Redis for distributed caching and rate limiting | `false` |
+| `REDIS_ADDRESS` | Redis server address | `localhost:6379` |
+| `REDIS_PASSWORD` | Redis password | `` |
+| `REDIS_DB` | Redis database number | `0` |
+| `WORKER_CONCURRENCY` | Number of worker pool goroutines | `10` |
 
 ## Testing
 
@@ -256,6 +266,38 @@ make check
 - [Testing](docs/testing.md) - Testing strategy
 - [Tax](docs/tax.md) - Tax calculation details
 
+## Future Plans
+
+### Platform Enhancements
+- **Message Broker Integration**: Support for RabbitMQ, Kafka, or NATS for event-driven architecture
+- **Enhanced Monitoring**: Real-time dashboards, metrics collection, and alerting
+- **Circuit Breakers**: Automatic degradation and fallback mechanisms for critical services
+- **Multi-Region Deployment**: Region-specific infrastructure and cross-region data routing
+
+### Security Improvements
+- **OAuth 2.0 / OpenID Connect**: Support for external identity providers (Google, Facebook, etc.)
+- **API Key Management**: Scoped API keys for third-party integrations
+- **Enhanced Rate Limiting**: Per-user, per-endpoint rate limiting with configurable policies
+- **Security Headers**: Additional security headers (CSP, HSTS, X-Frame-Options)
+
+### Performance Optimizations
+- **Query Optimization**: Database query optimization and indexing strategy
+- **Connection Pooling**: Enhanced connection pooling for better resource utilization
+- **Caching Strategy**: Multi-level caching with Redis and application-level caching
+- **API Response Compression**: Enhanced compression for API responses
+
+### Feature Roadmap
+- **Real-Time Updates**: WebSocket support for real-time order and delivery tracking
+- **Advanced Analytics**: Business intelligence and reporting features
+- **Payment Provider Integration**: Support for multiple payment gateways (Stripe, PayPal, etc.)
+- **SMS/Push Notifications**: Enhanced notification delivery with multiple providers
+- **Route Optimization**: AI-powered courier route optimization and ETA prediction
+- **Customer Loyalty Program**: Points, rewards, and referral system
+- **Restaurant Analytics**: Dashboard for restaurant owners with sales and performance metrics
+- **Menu Management**: Bulk upload, menu templates, and scheduling
+- **Delivery Scheduling**: Advanced delivery time windows and scheduling options
+- **Multi-Language Support**: Internationalization (i18n) for multiple languages
+
 ## License
 
-Copyright (c) Crew Digital. All rights reserved.
+Copyright (c) Yoosuf. All rights reserved.

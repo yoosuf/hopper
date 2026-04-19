@@ -35,11 +35,14 @@ The system is organized into clear domain modules with explicit boundaries:
 
 ### Platform Modules
 
+- **cache**: Caching layer (in-memory with Redis support for distributed caching)
 - **config**: Configuration loading from environment variables
 - **db**: Database connection pooling, transaction management
+- **errors**: Error handling with AppError pattern for consistent error management
+- **health**: Health check infrastructure for system monitoring
 - **logger**: Structured logging with redaction
 - **httpx**: HTTP response helpers, error formatting
-- **middleware**: Auth, RBAC, rate limiting, request ID, recovery
+- **middleware**: Auth, RBAC, CSRF protection, distributed rate limiting, request ID, recovery
 - **validator**: Request validation
 - **idempotency**: Idempotency key management
 - **clock**: Time abstraction for testing
